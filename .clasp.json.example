@@ -1,0 +1,28 @@
+{
+  "scriptId": "YOUR_GOOGLE_APPS_SCRIPT_ID_HERE",
+  "rootDir": "src",
+  "scriptExtensions": [
+    ".js",
+    ".gs"
+  ],
+  "htmlExtensions": [
+    ".html"
+  ],
+  "jsonExtensions": [
+    ".json"
+  ],
+  "filePushOrder": [
+    "F1ActivateBot.js",
+    "GrantAllPermission.js",
+    "main.js",
+    "core/config.js",
+    "core/securityGuard.js",
+    "core/financeParser.js",
+    "services/telegramService.js",
+    "services/driveService.js",
+    "services/sheetService.js",
+    "services/financeService.js",
+    "controllers/commandController.js"
+  ],
+  "skipSubdirectories": false
+}

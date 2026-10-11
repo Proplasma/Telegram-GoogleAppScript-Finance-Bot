@@ -1,0 +1,37 @@
+{
+  "name": "telegram-gas-finance-bot",
+  "version": "2.1.1",
+  "description": "2.1.1: Multi-Fund Finance Bot on Google Apps Script - Quan ly Thu Chi Da Quy & Luu So Lien Thong",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "node local/dev-polling.js",
+    "test:sim": "node local/simulate.js",
+    "stop": "node local/emergency-stop.js",
+    "webhook:info": "node local/manage-webhook.js info",
+    "webhook:set": "node local/manage-webhook.js set",
+    "webhook:delete": "node local/manage-webhook.js delete",
+    "clasp:login": "clasp login",
+    "clasp:status": "clasp status",
+    "clasp:create": "clasp create --type webapp --title \"SuperFinanceGAS_Bot\" --rootDir ./src",
+    "push": "clasp push",
+    "push:watch": "clasp push --watch",
+    "pull": "clasp pull",
+    "open": "clasp open",
+    "deploy": "clasp deploy -i YOUR_DEPLOYMENT_ID --description \"Production Release v2.1.1\"",
+    "logs": "clasp logs"
+  },
+  "keywords": [
+    "telegram-bot",
+    "google-apps-script",
+    "clasp",
+    "finance-bot",
+    "solid"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@google/clasp": "^3.4.1",
+    "dotenv": "^18.0.5"
+  }
+}

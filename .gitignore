@@ -1,0 +1,12 @@
+# Node modules
+node_modules/
+package-lock.json
+
+# Environment variables & local secrets
+.env
+.clasprc.json
+
+# Local development logs & temp
+*.log
+*.tmp
+.DS_Store

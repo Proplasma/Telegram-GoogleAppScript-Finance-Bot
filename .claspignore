@@ -1,0 +1,7 @@
+# File cấu hình .claspignore
+# Khi rootDir là 'src', clasp sẽ chỉ quét trong thư mục 'src'
+# Các file ở ngoài src như node_modules, local, docs tự động không bị đẩy lên.
+
+**/*.log
+**/*.tmp
+.DS_Store
