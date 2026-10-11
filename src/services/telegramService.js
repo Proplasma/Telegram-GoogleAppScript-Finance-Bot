@@ -158,6 +158,34 @@ function deleteTelegramWebhook(dropPendingUpdates) {
 }
 
 /**
+ * Chỉnh sửa nội dung tin nhắn đã gửi (dùng cho In-Chat Wizard chuyển bước mượt mà)
+ * @param {string|number} chatId
+ * @param {number} messageId
+ * @param {string} text
+ * @param {object} [extraOptions]
+ */
+function editMessageText(chatId, messageId, text, extraOptions) {
+  if (!messageId) {
+    return safeSendMessage(chatId, text, extraOptions);
+  }
+  var payload = Object.assign(
+    {
+      chat_id: chatId,
+      message_id: messageId,
+      text: text,
+      parse_mode: "HTML"
+    },
+    extraOptions || {}
+  );
+  var res = callTelegramApi("editMessageText", payload);
+  if (!res || !res.ok) {
+    // Fallback nếu tin nhắn không sửa được
+    return safeSendMessage(chatId, text, extraOptions);
+  }
+  return res;
+}
+
+/**
  * Lấy thông tin trạng thái Webhook hiện tại
  */
 function getTelegramWebhookInfo() {
@@ -171,6 +199,7 @@ if (typeof module !== "undefined" && module.exports) {
   global.safeSendMessage = safeSendMessage;
   global.replyToMessage = replyToMessage;
   global.sendInlineKeyboard = sendInlineKeyboard;
+  global.editMessageText = editMessageText;
   global.setTelegramWebhook = setTelegramWebhook;
   global.deleteTelegramWebhook = deleteTelegramWebhook;
   global.getTelegramWebhookInfo = getTelegramWebhookInfo;
@@ -181,6 +210,7 @@ if (typeof module !== "undefined" && module.exports) {
     safeSendMessage: safeSendMessage,
     replyToMessage: replyToMessage,
     sendInlineKeyboard: sendInlineKeyboard,
+    editMessageText: editMessageText,
     setTelegramWebhook: setTelegramWebhook,
     deleteTelegramWebhook: deleteTelegramWebhook,
     getTelegramWebhookInfo: getTelegramWebhookInfo

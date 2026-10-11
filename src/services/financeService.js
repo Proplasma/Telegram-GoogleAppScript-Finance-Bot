@@ -74,11 +74,11 @@ function buildLimitAlertText(tag, spentAmount) {
   var percent = Math.round((spent / limitVal) * 100);
   var remain = limitVal - spent;
 
-  var statusLabel = "An toan";
+  var statusLabel = "🟢 An toan";
   if (percent >= 100) {
-    statusLabel = "VUOT HAN MUC";
+    statusLabel = "🔴 VUOT HAN MUC";
   } else if (percent >= 80) {
-    statusLabel = "Sap cham tran";
+    statusLabel = "🟡 Sap cham tran";
   }
 
   var alertBox = renderBoxTable(
@@ -93,7 +93,7 @@ function buildLimitAlertText(tag, spentAmount) {
   );
 
   return (
-    "\n\n<b>THEO DÕI HẠN MỨC " +
+    "\n\n🎯 <b>THEO DÕI HẠN MỨC " +
     escapeHtml(normTag) +
     "</b>\n\n" +
     "<pre>" +
@@ -140,7 +140,7 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
   };
 
   var isIncome = parsedTx.amount >= 0;
-  var typeLabel = isIncome ? "THU VAO (+)" : "CHI RA (-)";
+  var typeLabel = isIncome ? "🟢 THU VAO (+)" : "🔴 CHI RA (-)";
   var amountFormatted = formatCurrency(parsedTx.amount, true);
 
   var titleHeader = "";
@@ -151,13 +151,14 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
     appendTransactionRow(SHEET_NAMES.PERSONAL, txRecord);
     var cStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
 
-    titleHeader = "<b>GHI NHẬN GIAO DỊCH  |  QUỸ CÁ NHÂN (/c)</b>";
+    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH  |  💼 QUỸ CÁ NHÂN (/c)</b>";
     tableRows = [
       { label: "Ma GD", value: txId },
       { label: "Loai GD", value: typeLabel },
       "SEPARATOR",
       { label: "Ngan hang", value: parsedTx.bank },
       { label: "Phan loai", value: parsedTx.tag },
+      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
       { label: "So tien", value: amountFormatted },
       { label: "Ghi chu", value: parsedTx.note },
       "SEPARATOR",
@@ -171,13 +172,14 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
     appendTransactionRow(SHEET_NAMES.SUB_FUND, txRecord);
     var lcbStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.SUB_FUND));
 
-    titleHeader = "<b>GHI NHẬN GIAO DỊCH  |  QUỸ PHỤ (/lcb)</b>";
+    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH  |  🏦 QUỸ PHỤ (/lcb)</b>";
     tableRows = [
       { label: "Ma GD", value: txId },
       { label: "Loai GD", value: typeLabel },
       "SEPARATOR",
       { label: "Ngan hang", value: parsedTx.bank },
       { label: "Phan loai", value: parsedTx.tag },
+      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
       { label: "So tien", value: amountFormatted },
       { label: "Ghi chu", value: parsedTx.note },
       "SEPARATOR",
@@ -194,13 +196,14 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
     var bothPersonalStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
     var bothSubStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.SUB_FUND));
 
-    titleHeader = "<b>GHI ĐỒNG THỜI 2 QUỸ  |  (/clcb)</b>";
+    titleHeader = "✅ <b>GHI ĐỒNG THỜI 2 QUỸ  |  ⚡ (/clcb)</b>";
     tableRows = [
       { label: "Ma GD", value: txId },
       { label: "Loai GD", value: typeLabel },
       "SEPARATOR",
       { label: "Ngan hang", value: parsedTx.bank },
       { label: "Phan loai", value: parsedTx.tag },
+      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
       { label: "So tien", value: amountFormatted },
       { label: "Ghi chu", value: parsedTx.note },
       "SEPARATOR",
@@ -229,18 +232,18 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
   if (billUrl) {
     var linkLabel =
       billUrl.indexOf("drive.google.com") > -1
-        ? "Mở xem ảnh hóa đơn (Bill) trên Google Drive"
-        : "Mở xem file ảnh hóa đơn (Bill)";
+        ? "🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive"
+        : "🖼 Mở xem file ảnh hóa đơn (Bill)";
     messageParts.push(
       "",
-      "<b>ẢNH HÓA ĐƠN (BILL):</b>\n<a href=\"" + escapeHtml(billUrl) + "\">" + linkLabel + "</a>"
+      "📸 <b>ẢNH HÓA ĐƠN (BILL):</b>\n<a href=\"" + escapeHtml(billUrl) + "\">" + linkLabel + "</a>"
     );
   }
 
   if (hasPhoto && billError) {
     messageParts.push(
       "",
-      "<i>Lưu ý Google Drive: " +
+      "⚠️ <i>Lưu ý Google Drive: " +
         escapeHtml(billError) +
         " (Mở GAS Editor -> Chọn hàm ActivateBot hoặc GrantAllPermissions -> Bấm Run để cấp quyền Drive).</i>"
     );
@@ -250,7 +253,7 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
   if (sheetUrl) {
     messageParts.push(
       "",
-      "<a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>"
+      "📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>"
     );
   }
 
@@ -258,7 +261,7 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
     inline_keyboard: [
       [
         {
-          text: "Hoàn tác giao dịch (" + txId + ")",
+          text: "↩️ Hoàn tác giao dịch (" + txId + ")",
           callback_data: "undo_tx:" + mode + ":" + txId
         }
       ]
@@ -317,7 +320,7 @@ function executeUndoTransaction(targetMode, specificTxId) {
 
   var sample = deletedPersonal || deletedSub;
   if (!sample) {
-    return "<b>KHÔNG TÌM THẤY GIAO DỊCH ĐỂ HOÀN TÁC</b>\n\nGiao dịch này đã được xóa trước đó hoặc bảng đang trống.";
+    return "⚠️ <b>KHÔNG TÌM THẤY GIAO DỊCH ĐỂ HOÀN TÁC</b>\n\nGiao dịch này đã được xóa trước đó hoặc bảng đang trống.";
   }
 
   var cStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
@@ -348,7 +351,7 @@ function executeUndoTransaction(targetMode, specificTxId) {
   );
 
   return (
-    "<b>ĐÃ HOÀN TÁC (XÓA) GIAO DỊCH THÀNH CÔNG</b>\n\n" +
+    "↩️ <b>ĐÃ HOÀN TÁC (XÓA) GIAO DỊCH THÀNH CÔNG</b>\n\n" +
     "<pre>" +
     escapeHtml(box) +
     "</pre>"
@@ -413,21 +416,21 @@ function buildBalanceReport() {
   var tagBox = renderBoxTable(tagRows, 15, 22);
 
   var parts = [
-    "<b>BÁO CÁO SỐ DƯ TÀI CHÍNH (/sodu)</b>",
+    "📊 <b>BÁO CÁO SỐ DƯ TÀI CHÍNH (/sodu)</b>",
     "",
-    "<b>1. TỔNG QUAN HAI QUỸ:</b>",
+    "💰 <b>1. TỔNG QUAN HAI QUỸ:</b>",
     "<pre>" + escapeHtml(overviewBox) + "</pre>",
     "",
-    "<b>2. SỐ DƯ THEO NGÂN HÀNG (QUỸ CÁ NHÂN):</b>",
+    "🏦 <b>2. SỐ DƯ THEO NGÂN HÀNG (QUỸ CÁ NHÂN):</b>",
     "<pre>" + escapeHtml(bankBox) + "</pre>",
     "",
-    "<b>3. SỐ DƯ THEO PHÂN LOẠI #TAG:</b>",
+    "🏷️ <b>3. SỐ DƯ THEO PHÂN LOẠI #TAG:</b>",
     "<pre>" + escapeHtml(tagBox) + "</pre>"
   ];
 
   var sheetUrl = getProperty("SHEET_URL");
   if (sheetUrl) {
-    parts.push("", "<a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets chi tiết</a>");
+    parts.push("", "📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets chi tiết</a>");
   }
 
   return parts.join("\n");
@@ -446,9 +449,9 @@ function buildRecentHistoryReport(limitCount) {
   var recentP = pRows.slice(-count).reverse();
   var recentS = sRows.slice(-count).reverse();
 
-  var parts = ["<b>LỊCH SỬ " + count + " GIAO DỊCH GẦN NHẤT (/ls)</b>"];
+  var parts = ["📜 <b>LỊCH SỬ " + count + " GIAO DỊCH GẦN NHẤT (/ls)</b>"];
 
-  parts.push("", "--------------------------------", "<b>1. QUỸ CÁ NHÂN (/c):</b>");
+  parts.push("", "--------------------------------", "📘 <b>1. QUỸ CÁ NHÂN (/c):</b>");
   if (recentP.length === 0) {
     parts.push("<i>(Chưa có giao dịch nào)</i>");
   } else {
@@ -466,13 +469,13 @@ function buildRecentHistoryReport(limitCount) {
       );
       var itemText = "\n<pre>" + escapeHtml(box) + "</pre>";
       if (item.billUrl) {
-        itemText += "\n<a href=\"" + escapeHtml(item.billUrl) + "\">Xem ảnh Bill (" + escapeHtml(item.txId) + ")</a>";
+        itemText += "\n🖼 <a href=\"" + escapeHtml(item.billUrl) + "\">Xem ảnh Bill (" + escapeHtml(item.txId) + ")</a>";
       }
       parts.push(itemText);
     }
   }
 
-  parts.push("", "--------------------------------", "<b>2. QUỸ PHỤ (/lcb):</b>");
+  parts.push("", "--------------------------------", "📙 <b>2. QUỸ PHỤ (/lcb):</b>");
   if (recentS.length === 0) {
     parts.push("<i>(Chưa có giao dịch nào)</i>");
   } else {
@@ -490,7 +493,7 @@ function buildRecentHistoryReport(limitCount) {
       );
       var sItemText = "\n<pre>" + escapeHtml(sBox) + "</pre>";
       if (sItem.billUrl) {
-        sItemText += "\n<a href=\"" + escapeHtml(sItem.billUrl) + "\">Xem ảnh Bill (" + escapeHtml(sItem.txId) + ")</a>";
+        sItemText += "\n🖼 <a href=\"" + escapeHtml(sItem.billUrl) + "\">Xem ảnh Bill (" + escapeHtml(sItem.txId) + ")</a>";
       }
       parts.push(sItemText);
     }
@@ -508,7 +511,7 @@ function buildRecentHistoryReport(limitCount) {
 function handleSetLimitCommand(argsText, userLabel) {
   var parsed = parseLimitArgs(argsText);
   if (!parsed.valid) {
-    return "<b>CÚ PHÁP HẠN MỨC CHƯA ĐÚNG</b>\n\n" + parsed.error;
+    return "⚠️ <b>CÚ PHÁP HẠN MỨC CHƯA ĐÚNG</b>\n\n" + parsed.error;
   }
 
   upsertTagLimit(parsed.tag, parsed.limitAmount, userLabel);
@@ -530,7 +533,7 @@ function handleSetLimitCommand(argsText, userLabel) {
   );
 
   return (
-    "<b>ĐÃ CẬP NHẬT HẠN MỨC CHI TIÊU (/limit)</b>\n\n" +
+    "🎯 <b>ĐÃ CẬP NHẬT HẠN MỨC CHI TIÊU (/limit)</b>\n\n" +
     "<pre>" +
     escapeHtml(box) +
     "</pre>"
@@ -561,20 +564,20 @@ function buildRenewPreview() {
   );
 
   var text =
-    "<b>XÁC NHẬN CHỐT SỔ CUỐI KỲ (/chotso)</b>\n\n" +
+    "📅 <b>XÁC NHẬN CHỐT SỔ CUỐI KỲ (/chotso)</b>\n\n" +
     "<pre>" +
     escapeHtml(box) +
     "</pre>\n\n" +
     "<b>Khi xác nhận Chốt sổ (/chotso):</b>\n" +
-    "1. Toàn bộ các dòng giao dịch kỳ này sẽ được chuyển sang bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "2. Các dòng giao dịch lẻ được gom gọn thành dòng <b>Số dư đầu kỳ</b> mới cho từng Ngân hàng & #Tag.\n" +
+    "1️⃣ Toàn bộ các dòng giao dịch kỳ này sẽ được chuyển sang bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
+    "2️⃣ Các dòng giao dịch lẻ được gom gọn thành dòng <b>Số dư đầu kỳ</b> mới cho từng Ngân hàng & #Tag.\n" +
     "<i>(Nếu muốn lưu sổ và đưa toàn bộ số dư về 0, hãy dùng lệnh /reset)</i>";
 
   var replyMarkup = {
     inline_keyboard: [
       [
-        { text: "Xác nhận Chốt Sổ", callback_data: "confirm_renew:yes" },
-        { text: "Hủy bỏ", callback_data: "confirm_renew:no" }
+        { text: "✅ Xác nhận Chốt Sổ", callback_data: "confirm_renew:yes" },
+        { text: "❌ Hủy bỏ", callback_data: "confirm_renew:no" }
       ]
     ]
   };
@@ -665,14 +668,14 @@ function executeRenewPeriod(userLabel) {
   );
 
   return (
-    "<b>ĐÃ CHỐT SỔ SANG KỲ MỚI THÀNH CÔNG</b>\n\n" +
+    "✅ <b>ĐÃ CHỐT SỔ SANG KỲ MỚI THÀNH CÔNG</b>\n\n" +
     "<pre>" +
     escapeHtml(box) +
     "</pre>\n\n" +
-    "Toàn bộ <b>" +
+    "📦 Toàn bộ <b>" +
     archivedCount +
     " giao dịch chi tiết</b> (kèm Ghi chú & Link Bill) đã được chuyển nguyên vẹn sang bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "Đã khởi tạo dòng <b>Số dư đầu kỳ</b> mới cho kỳ tiếp theo."
+    "🌱 Đã khởi tạo dòng <b>Số dư đầu kỳ</b> mới cho kỳ tiếp theo."
   );
 }
 
@@ -722,17 +725,17 @@ function executeResetAllToZero(userLabel) {
 
   var sheetUrl = getProperty("SHEET_URL");
   var msg =
-    "<b>ĐÃ LƯU SỔ LIÊN THÔNG & RESET SỐ DƯ VỀ 0 (/reset)</b>\n\n" +
+    "🧹 <b>ĐÃ LƯU SỔ LIÊN THÔNG & RESET SỐ DƯ VỀ 0 (/reset)</b>\n\n" +
     "<pre>" +
     escapeHtml(box) +
     "</pre>\n\n" +
-    "Đã di chuyển nguyên vẹn <b>" +
+    "📦 Đã di chuyển nguyên vẹn <b>" +
     archivedCount +
     " dòng giao dịch cũ</b> (đầy đủ Mã GD, Thời gian, Ngân hàng, #Tag, Số tiền, Ghi chú, Link Ảnh Bill) sang nối tiếp tại bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "Số dư hiện tại của tất cả Ngân hàng, #Tag và 2 Quỹ đã đưa về <b>0 đ</b>.";
+    "✨ Số dư hiện tại của tất cả Ngân hàng, #Tag và 2 Quỹ đã đưa về <b>0 đ</b>.";
 
   if (sheetUrl) {
-    msg += "\n\n<a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets (Xem tab Lịch Sử Chốt Sổ)</a>";
+    msg += "\n\n📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets (Xem tab Lịch Sử Chốt Sổ)</a>";
   }
 
   return msg;

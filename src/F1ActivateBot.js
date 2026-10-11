@@ -30,7 +30,7 @@ function setupEnvironment() {
   var existingSheetUrl = props.getProperty("SHEET_URL") || "";
 
   var envData = {
-    'APP_VERSION': '2.1.1',
+    'APP_VERSION': '2.2.0',
     'BOT_TOKEN': 'YOUR_TELEGRAM_BOT_TOKEN_HERE',
     'TELEGRAM_BOT_TOKEN': 'YOUR_TELEGRAM_BOT_TOKEN_HERE',
     'ALLOWED_USER_IDS': 'YOUR_USER_ID_1, YOUR_USER_ID_2',

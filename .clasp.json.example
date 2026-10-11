@@ -22,7 +22,9 @@
     "services/driveService.js",
     "services/sheetService.js",
     "services/financeService.js",
-    "controllers/commandController.js"
+    "controllers/uiController.js",
+    "controllers/commandController.js",
+    "uiWebApp.html"
   ],
   "skipSubdirectories": false
 }

@@ -4,8 +4,9 @@
  * MODULE: COMMAND CONTROLLER (OCP - Open/Closed Principle)
  * Chuyên trách:
  * 1. Kiểm tra phân quyền Multi-Account Whitelist (ALLOWED_USER_IDS)
- *    - Nếu tài khoản không được phép -> Trả về "Bot 2.1.1 Loading..."
- * 2. Điều phối toàn bộ tập lệnh bắt đầu bằng dấu "/"
+ *    - Nếu tài khoản không được phép -> Trả về "Bot 2.2.0 Loading..."
+ * 2. Phối hợp song song giữa Giao diện UI (Reply Keyboard, In-Chat Wizard,
+ *    Web App "Open UI Mode") và toàn bộ tập lệnh bắt đầu bằng dấu "/"
  *    (/c, /lcb, /clcb, /undo, /sodu, /balance, /ls, /history, /limit, /chotso, /renew, /reset)
  * 3. Xử lý ảnh Bill đính kèm (cả ảnh kèm Caption, Reply vào ảnh, hoặc gửi ảnh trước rồi gõ lệnh)
  * ============================================================
@@ -28,6 +29,7 @@ function handleTransactionCommand(mode, argsText, message, chatId, userLabel) {
         { label: "Lenh chuan", value: cmdName + " <Bank> [#TAG] <Tien> [Ghi chu]" },
         { label: "Thu (+)", value: cmdName + " Techcombank #LUONG 15tr" },
         { label: "Chi (-)", value: cmdName + " Techcombank #TRADA -50k" },
+        { label: "Phep tinh", value: cmdName + " MB #ANUONG -(120k+30k)/3" },
         { label: "Mac dinh", value: "Khong ghi Bank -> Chung, Tag -> #CHUNG" }
       ],
       13,
@@ -36,7 +38,7 @@ function handleTransactionCommand(mode, argsText, message, chatId, userLabel) {
 
     return safeSendMessage(
       chatId,
-      "<b>CÚ PHÁP LỆNH " +
+      "⚠️ <b>CÚ PHÁP LỆNH " +
         cmdName.toUpperCase() +
         " CHƯA ĐÚNG</b>\n\n" +
         parsedTx.error +
@@ -57,7 +59,7 @@ function handleTransactionCommand(mode, argsText, message, chatId, userLabel) {
 }
 
 /**
- * Điều phối tin nhắn văn bản, ảnh hoặc chú thích ảnh (Caption) từ người dùng
+ * Điều phối tin nhắn văn bản, ảnh, nút bấm bàn phím đáy hoặc chú thích ảnh (Caption) từ người dùng
  * @param {object} message - Đối tượng message từ Telegram Update
  */
 function dispatchCommand(message) {
@@ -78,8 +80,16 @@ function dispatchCommand(message) {
   // Hỗ trợ đọc lệnh từ cả tin nhắn chữ (message.text) và chú thích ảnh Bill (message.caption)
   var rawText = String(message.text || message.caption || "").trim();
 
+  // 2. KIỂM TRA CÁC NÚT BẤM TRÊN BÀN PHÍM ĐÁY MÀN HÌNH HOẶC LUỒNG WIZARD 4 BƯỚC
+  if (typeof handleUiReplyKeyboardOrWizard === "function") {
+    var handledByUi = handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLabel);
+    if (handledByUi) {
+      return null;
+    }
+  }
+
   // Nếu người dùng gửi 1 bức ảnh (không kèm lệnh / ở caption) -> Lưu tạm file_id ảnh đó trong 5 phút
-  // để khi họ gõ lệnh /c, /lcb, /clcb ngay câu tiếp theo thì Bot tự động đính kèm ảnh đó luôn
+  // để khi họ gõ lệnh /c, /lcb, /clcb hoặc dùng Wizard ngay câu tiếp theo thì Bot tự động đính kèm ảnh đó luôn
   if (!rawText || rawText.charAt(0) !== "/") {
     if (extractPhotoFileIdFromMsg(message)) {
       savePendingPhotoFromMessage(message);
@@ -101,6 +111,9 @@ function dispatchCommand(message) {
       var sheetUrl = getProperty("SHEET_URL");
       var cmdTable = renderBoxTable(
         [
+          { label: "Open UI Mode", value: "Bang dieu khien do hoa 3 Tab" },
+          { label: "/ghi", value: "Chon nut tung buoc trong Chat" },
+          "SEPARATOR",
           { label: "/c", value: "Ghi Thu/Chi Quy Ca Nhan" },
           { label: "/lcb", value: "Ghi Thu/Chi Quy Phu" },
           { label: "/clcb", value: "Ghi dong thoi ca 2 Quy" },
@@ -115,7 +128,7 @@ function dispatchCommand(message) {
           { label: "/status", value: "Trang thai Bot & Sheet" },
           { label: "/id", value: "Xem User ID & Chat ID" }
         ],
-        11,
+        12,
         25
       );
 
@@ -124,6 +137,7 @@ function dispatchCommand(message) {
           { label: "Cau truc", value: "/c <Bank> [#TAG] <Tien> [Note]" },
           { label: "Thu (+)", value: "/c Techcombank #LUONG 15tr" },
           { label: "Chi (-)", value: "/c Techcombank #TRADA -50k" },
+          { label: "Phep tinh", value: "/c MB #ANUONG -(120k+30k)/3" },
           { label: "Quy phu", value: "/lcb MB #CHO -200k Di cho" },
           { label: "Ca 2 quy", value: "/clcb CASH #QUATANG -500k" },
           { label: "Han muc", value: "/limit #TRADA 200k" },
@@ -134,28 +148,28 @@ function dispatchCommand(message) {
       );
 
       var helpMsg =
-        "<b>SUPER FINANCE GAS BOT  |  v" +
+        "🚀 <b>SUPER FINANCE GAS BOT  |  v" +
         escapeHtml(getAppVersion()) +
-        "</b>\n" +
+        " (HYBRID UI)</b>\n" +
         "Xin chào <b>" +
         escapeHtml(firstName) +
-        "</b>. Hệ thống Quản lý Tài chính Đa Quỹ đã sẵn sàng.\n\n" +
-        "<b>1. DANH MỤC LỆNH HỆ THỐNG:</b>\n" +
+        "</b>! Hệ thống hỗ trợ song song cả <b>📱 Giao diện Đồ họa (Open UI Mode)</b>, <b>➕ Nút chọn từng bước</b> và <b>⌨️ Dòng lệnh truyền thống</b>.\n\n" +
+        "📋 <b>1. DANH MỤC TÍNH NĂNG & LỆNH:</b>\n" +
         "<pre>" +
         escapeHtml(cmdTable) +
         "</pre>\n\n" +
-        "<b>2. VÍ DỤ CÚ PHÁP NHẬP NHANH:</b>\n" +
+        "🧮 <b>2. VÍ DỤ CÚ PHÁP NHẬP NHANH (HỖ TRỢ + - * /):</b>\n" +
         "<pre>" +
         escapeHtml(syntaxTable) +
         "</pre>\n\n" +
-        "<b>Gửi Ảnh Bill:</b> Có thể gửi ảnh kèm Caption lệnh <code>/c ...</code>, hoặc gửi ảnh trước rồi gõ lệnh <code>/c ...</code> ngay sau đó.";
+        "📱 <b>Mở Giao Diện UI:</b> Bấm nút <b>📱 Open UI Mode</b> trên bàn phím cố định ở dưới đáy màn hình.";
 
       if (sheetUrl) {
-        helpMsg += "\n\n<a href=\"" + escapeHtml(sheetUrl) + "\">Mở File Google Sheets của Bot</a>";
+        helpMsg += "\n\n📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở File Google Sheets của Bot</a>";
       }
 
       return safeSendMessage(chatId, helpMsg, {
-        reply_markup: { remove_keyboard: true },
+        reply_markup: buildMainReplyKeyboard(userId),
         disable_web_page_preview: true
       });
 
@@ -170,27 +184,39 @@ function dispatchCommand(message) {
 
     case "/undo":
       var undoText = executeUndoTransaction(argsText, null);
-      return safeSendMessage(chatId, undoText);
+      return safeSendMessage(chatId, undoText, {
+        reply_markup: buildMainReplyKeyboard(userId)
+      });
 
     case "/sodu":
     case "/balance":
       var balReport = buildBalanceReport();
-      return safeSendMessage(chatId, balReport, { disable_web_page_preview: true });
+      return safeSendMessage(chatId, balReport, {
+        reply_markup: buildMainReplyKeyboard(userId),
+        disable_web_page_preview: true
+      });
 
     case "/ls":
     case "/history":
       var hisReport = buildRecentHistoryReport(5);
-      return safeSendMessage(chatId, hisReport, { disable_web_page_preview: true });
+      return safeSendMessage(chatId, hisReport, {
+        reply_markup: buildMainReplyKeyboard(userId),
+        disable_web_page_preview: true
+      });
 
     case "/limit":
       var limitRes = handleSetLimitCommand(argsText, userLabel);
-      return safeSendMessage(chatId, limitRes);
+      return safeSendMessage(chatId, limitRes, {
+        reply_markup: buildMainReplyKeyboard(userId)
+      });
 
     case "/chotso":
     case "/renew":
       if (argsText && (argsText.toLowerCase() === "yes" || argsText.toLowerCase() === "confirm")) {
         var doneText = executeRenewPeriod(userLabel);
-        return safeSendMessage(chatId, doneText);
+        return safeSendMessage(chatId, doneText, {
+          reply_markup: buildMainReplyKeyboard(userId)
+        });
       }
       var previewObj = buildRenewPreview();
       return safeSendMessage(chatId, previewObj.text, {
@@ -200,27 +226,30 @@ function dispatchCommand(message) {
     case "/reset":
       var resetResultText = executeResetAllToZero(userLabel);
       return safeSendMessage(chatId, resetResultText, {
+        reply_markup: buildMainReplyKeyboard(userId),
         disable_web_page_preview: true
       });
 
     case "/ping":
       return safeSendMessage(
         chatId,
-        "<b>Pong!</b> Bot <b>v" +
+        "🏓 <b>Pong!</b> Bot <b>v" +
           escapeHtml(getAppVersion()) +
-          "</b> đang hoạt động ổn định.\n<i>Chế độ Anti-Reply-Storm: Đang bật</i>"
+          "</b> đang hoạt động ổn định.\n<i>Chế độ Anti-Reply-Storm & Hybrid UI: Đang bật</i>",
+        { reply_markup: buildMainReplyKeyboard(userId) }
       );
 
     case "/id":
       return safeSendMessage(
         chatId,
-        "<b>THÔNG TIN ĐỊNH DANH CỦA BẠN:</b>\n\n" +
-          "- <b>User ID:</b> <code>" +
+        "🆔 <b>THÔNG TIN ĐỊNH DANH CỦA BẠN:</b>\n\n" +
+          "• <b>User ID:</b> <code>" +
           userId +
           "</code>\n" +
-          "- <b>Chat ID:</b> <code>" +
+          "• <b>Chat ID:</b> <code>" +
           chatId +
-          "</code>"
+          "</code>",
+        { reply_markup: buildMainReplyKeyboard(userId) }
       );
 
     case "/status":
@@ -228,7 +257,7 @@ function dispatchCommand(message) {
       var driveSt = checkDrivePermissionStatus();
       var stBox = renderBoxTable(
         [
-          { label: "Phien ban", value: "v" + cfg.appVersion },
+          { label: "Phien ban", value: "v" + cfg.appVersion + " (Hybrid UI)" },
           { label: "Bot", value: "@" + cfg.botUsername },
           { label: "Allowed IDs", value: cfg.adminIds },
           { label: "Cau chi", value: cfg.emergencyStop ? "DANG KHOA" : "Hoat dong" },
@@ -239,19 +268,22 @@ function dispatchCommand(message) {
         24
       );
       var stMsg =
-        "<b>TRẠNG THÁI HỆ THỐNG BOT</b>\n\n" +
+        "🛡️ <b>TRẠNG THÁI HỆ THỐNG BOT</b>\n\n" +
         "<pre>" +
         escapeHtml(stBox) +
         "</pre>";
       if (cfg.sheetUrl) {
-        stMsg += "\n\n<a href=\"" + escapeHtml(cfg.sheetUrl) + "\">Mở File Google Sheets</a>";
+        stMsg += "\n\n📂 <a href=\"" + escapeHtml(cfg.sheetUrl) + "\">Mở File Google Sheets</a>";
       }
-      return safeSendMessage(chatId, stMsg, { disable_web_page_preview: true });
+      return safeSendMessage(chatId, stMsg, {
+        reply_markup: buildMainReplyKeyboard(userId),
+        disable_web_page_preview: true
+      });
 
     case "/stop_emergency":
       safeSendMessage(
         chatId,
-        "<b>ĐANG KÍCH HOẠT CẦU CHÌ DỪNG KHẨN CẤP...</b>\n" +
+        "🛑 <b>ĐANG KÍCH HOẠT CẦU CHÌ DỪNG KHẨN CẤP...</b>\n" +
           "Bot sẽ ngắt Webhook và xả toàn bộ hàng đợi tin nhắn ngay lập tức."
       );
       return EmergencyStop();
@@ -259,15 +291,16 @@ function dispatchCommand(message) {
     default:
       return safeSendMessage(
         chatId,
-        "Lệnh <code>" +
+        "⚠️ Lệnh <code>" +
           escapeHtml(command) +
-          "</code> chưa được hỗ trợ.\nGõ /help để xem bảng hướng dẫn chi tiết."
+          "</code> chưa được hỗ trợ.\nGõ /help hoặc bấm các nút dưới đáy màn hình để thao tác.",
+        { reply_markup: buildMainReplyKeyboard(userId) }
       );
   }
 }
 
 /**
- * Xử lý sự kiện bấm nút Inline Keyboard (Hoàn tác giao dịch / Xác nhận chốt sổ)
+ * Xử lý sự kiện bấm nút Inline Keyboard (Hoàn tác giao dịch / Xác nhận chốt sổ / Wizard 4 bước)
  * @param {object} callbackQuery
  */
 function handleCallbackQuery(callbackQuery) {
@@ -294,6 +327,14 @@ function handleCallbackQuery(callbackQuery) {
 
   var data = String(callbackQuery.data || "");
 
+  // 0. Chuyển tiếp các sự kiện thuộc In-Chat Wizard hoặc xác nhận Reset
+  if (typeof handleUiWizardCallback === "function") {
+    var wizHandled = handleUiWizardCallback(callbackQuery, data, chatId, userId, userLabel);
+    if (wizHandled) {
+      return null;
+    }
+  }
+
   // 1. Nút Hoàn tác giao dịch: "undo_tx:<mode>:<txId>"
   if (data.indexOf("undo_tx:") === 0) {
     var parts = data.split(":");
@@ -302,7 +343,7 @@ function handleCallbackQuery(callbackQuery) {
 
     callTelegramApi("answerCallbackQuery", {
       callback_query_id: callbackQuery.id,
-      text: "Đang hoàn tác giao dịch " + txId + "..."
+      text: "↩️ Đang hoàn tác giao dịch " + txId + "..."
     });
 
     var undoMsg = executeUndoTransaction(mode, txId);
@@ -320,7 +361,7 @@ function handleCallbackQuery(callbackQuery) {
       var renewMsg = executeRenewPeriod(userLabel);
       return safeSendMessage(chatId, renewMsg);
     } else {
-      return safeSendMessage(chatId, "<b>Đã hủy thao tác chốt sổ.</b> Dữ liệu hiện tại được giữ nguyên.");
+      return safeSendMessage(chatId, "❌ <b>Đã hủy thao tác.</b> Dữ liệu hiện tại được giữ nguyên.");
     }
   }
 

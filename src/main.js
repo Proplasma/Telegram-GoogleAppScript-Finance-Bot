@@ -1,32 +1,74 @@
 // main.js //
 /**
  * ============================================================
- * SUPER FINANCE GAS BOT (@SuperFinanceGAS_bot) - WEBHOOK ENTRY POINT
- * Phiên bản: 2.1.1 | Kiến trúc SOLID
+ * SUPER FINANCE GAS BOT (@SuperFinanceGAS_bot) - WEBHOOK & UI ENTRY POINT
+ * Phiên bản: 2.2.0 (Hybrid UI) | Kiến trúc SOLID
  * Lưu ý: Hàm ActivateBot(), setupEnvironment() và mục điền WEBAPP_URL
  * nằm tại file đầu tiên: F1ActivateBot.js
  * ============================================================
  */
 
 /**
- * Điểm tiếp nhận GET Request (Kiểm tra trạng thái Web App & Quyền Drive trên trình duyệt)
+ * Điểm tiếp nhận GET Request:
+ * - Mặc định: Phục vụ giao diện đồ họa 3 Tab "Open UI Mode" (uiWebApp.html)
+ *   với dữ liệu thực tế từ Google Sheets được nhúng sẵn.
+ * - Nếu truyền ?format=json: Trả về JSON kiểm tra trạng thái hệ thống & quyền Drive.
  */
 function doGet(e) {
-  var driveStatus = checkDrivePermissionStatus();
-  var statusPayload = {
-    status: getProperty("EMERGENCY_STOP") === "true" ? "emergency_stopped" : "online",
-    bot: "SuperFinanceGAS_bot",
-    version: getAppVersion(),
-    webapp_url: getProperty("WEBAPP_URL") || "",
-    sheet_url: getProperty("SHEET_URL") || "",
-    drive_authorized: driveStatus.authorized,
-    drive_status: driveStatus.message,
-    emergency_stop: getProperty("EMERGENCY_STOP") === "true",
-    timestamp: new Date().toISOString()
-  };
-  return ContentService.createTextOutput(JSON.stringify(statusPayload, null, 2)).setMimeType(
-    ContentService.MimeType.JSON
-  );
+  var params = (e && e.parameter) || {};
+
+  // Nếu gọi kiểm tra trạng thái kỹ thuật dạng JSON (?format=json)
+  if (params.format === "json") {
+    var driveStatus = checkDrivePermissionStatus();
+    var statusPayload = {
+      status: getProperty("EMERGENCY_STOP") === "true" ? "emergency_stopped" : "online",
+      bot: "SuperFinanceGAS_bot",
+      version: getAppVersion(),
+      webapp_url: getProperty("WEBAPP_URL") || "",
+      sheet_url: getProperty("SHEET_URL") || "",
+      drive_authorized: driveStatus.authorized,
+      drive_status: driveStatus.message,
+      emergency_stop: getProperty("EMERGENCY_STOP") === "true",
+      timestamp: new Date().toISOString()
+    };
+    return ContentService.createTextOutput(JSON.stringify(statusPayload, null, 2)).setMimeType(
+      ContentService.MimeType.JSON
+    );
+  }
+
+  // Mặc định: Render giao diện đồ họa "Open UI Mode" (3 Tab) trên Google Apps Script
+  if (typeof HtmlService !== "undefined" && HtmlService.createTemplateFromFile) {
+    try {
+      var uid = params.uid || getAdminChatId();
+      var initData =
+        typeof getWebAppInitialData === "function"
+          ? getWebAppInitialData(uid)
+          : { ok: true, version: getAppVersion() };
+
+      var template = HtmlService.createTemplateFromFile("uiWebApp");
+      template.INITIAL_STATE_JSON = JSON.stringify(initData);
+
+      var htmlOut = template
+        .evaluate()
+        .setTitle("Open UI Mode - @SuperFinanceGAS_bot")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no");
+
+      if (HtmlService.XFrameOptionsMode && HtmlService.XFrameOptionsMode.ALLOWALL) {
+        htmlOut.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      }
+      return htmlOut;
+    } catch (uiErr) {
+      Logger.log("[doGet UI Error] " + uiErr.message);
+      return HtmlService.createHtmlOutput(
+        "<h3>Đang khởi tạo giao diện Open UI Mode...</h3><p>" + escapeHtml(uiErr.message) + "</p>"
+      );
+    }
+  }
+
+  // Fallback trên môi trường Local Node.js
+  return ContentService.createTextOutput(
+    JSON.stringify({ status: "online", version: getAppVersion(), mode: "hybrid_ui" }, null, 2)
+  ).setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -58,7 +100,7 @@ function doPost(e) {
     }
 
     // 2. ĐIỀU PHỐI XỬ LÝ SỰ KIỆN
-    // Nhận tất cả updateData.message (cả text, caption, photo, document) để bắt cả ảnh gửi rời lẫn ảnh kèm lệnh
+    // Nhận tất cả updateData.message (cả text, caption, photo, document, web_app_data)
     if (updateData.message) {
       dispatchCommand(updateData.message);
     } else if (updateData.callback_query) {

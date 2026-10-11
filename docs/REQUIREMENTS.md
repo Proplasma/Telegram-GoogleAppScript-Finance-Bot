@@ -1,58 +1,49 @@
-# Yêu cầu Nghiệp vụ và Quy chuẩn Kỹ thuật (Phiên bản 2.1.1)
+# Yêu cầu Nghiệp vụ và Quy chuẩn Kỹ thuật (Phiên bản 2.2.0 - Hybrid UI)
 
-Tài liệu này tổng hợp toàn bộ các yêu cầu chức năng, quy ước cú pháp lệnh và quy tắc vận hành bắt buộc của dự án **Telegram GAS Finance Bot (v2.1.1)**.
+Tài liệu này tổng hợp toàn bộ các yêu cầu chức năng, kiến trúc giao diện đa tầng, quy ước cú pháp lệnh và quy tắc vận hành bắt buộc của dự án **Telegram GAS Finance Bot (v2.2.0)**.
 
 ---
 
-## 1. Yêu cầu Nghiệp vụ Tài chính
+## 1. Yêu cầu Giao diện Đa Tầng (3-Layer Hybrid UI)
 
-### 1.1. Quản lý Đa Quỹ (`/c`, `/lcb`, `/clcb`)
-- **`/c` (Quỹ Cá Nhân):** Ghi nhận các khoản thu và chi cá nhân vào bảng `Thu Chi`.
-- **`/lcb` (Quỹ Phụ):** Ghi nhận các khoản thu và chi của quỹ phụ vào bảng `Quỹ Phụ`.
-- **`/clcb` (Ghi đồng thời 2 quỹ):** Ghi nhận cùng một giao dịch vào cả 2 bảng `Thu Chi` và `Quỹ Phụ` với cùng Mã GD, Ngân hàng và `#Tag`. Khi hoàn tác (`/undo`), hệ thống tự động xóa đồng bộ ở cả 2 bảng.
+Hệ thống bắt buộc duy trì song song cả 3 lớp tương tác để phục vụ cả người dùng không quen gõ lệnh lẫn người dùng thích tốc độ dòng lệnh:
 
-### 1.2. Quy tắc Cú pháp Nhập liệu
-- Bắt buộc mọi lệnh điều khiển đều phải bắt đầu bằng ký tự `/`.
+### 1.1. Tầng 1: Giao diện Đồ họa `Open UI Mode` (Telegram Web App 3 Tab)
+- Mở trực tiếp từ nút **Open UI Mode** trên bàn phím cố định ở đáy màn hình Telegram.
+- Thiết kế gồm 3 Tab chức năng với thanh cuộn dọc mảnh và bảng màu phân biệt rõ ràng:
+  1. **Tab 1 - Ghi Thu Chi:** Chọn Quỹ (`/c`, `/lcb`, `/clcb`), chọn chiều giao dịch (`CHI RA (-)` màu đỏ, `THU VÀO (+)` màu xanh), chọn nhanh thẻ Ngân hàng và `#Tag`, bàn phím máy tính đầy đủ (`+`, `-`, `*`, `/`, ngoặc đơn `( )`, `.000`, `.000.000`, `=`), ô ghi chú và nút đính kèm ảnh hóa đơn (Bill) tải trực tiếp lên Google Drive.
+  2. **Tab 2 - Số Dư & Hạn Mức:** Bảng tổng hợp số dư từng Ngân hàng của cả 2 Quỹ, danh sách thanh tiến độ hạn mức chi tiêu theo `#Tag` (tự động đổi màu Xanh / Vàng / Đỏ theo tỷ lệ phần trăm), và biểu mẫu cập nhật hạn mức mới.
+  3. **Tab 3 - Lịch Sử & Sổ:** Xem 5 giao dịch gần nhất kèm đường dẫn ảnh Bill, nút Hoàn tác giao dịch cuối (`/undo`), nút Chốt sổ tháng mới (`/chotso`) và Reset số dư về 0 (`/reset`).
+
+### 1.2. Tầng 2: Bàn phím Cố định & Chọn nút 4 bước trong Chat (In-Chat Wizard)
+- Hiển thị bàn phím cố định (Persistent Reply Keyboard) dưới đáy khung chat gồm 7 nút thao tác nhanh.
+- Khi bấm **Ghi Thu / Chi** hoặc gõ `/ghi`, Bot dẫn dắt qua 4 bước chọn nút Inline ngay trong luồng chat: Chọn Quỹ -> Chọn Ngân hàng -> Chọn `#Tag` -> Nhập số tiền/biểu thức và ghi chú.
+
+### 1.3. Tầng 3: Dòng lệnh truyền thống (CLI Commands)
+- Mọi lệnh điều khiển gõ trực tiếp đều bắt đầu bằng ký tự `/`.
 - Cấu trúc chuẩn:
   ```text
-  /<lệnh> <Ngân_Hàng> [#TAG] <Số_Tiền> [Ghi chú]
+  /<lệnh> <Ngân_Hàng> [#TAG] <Số_Tiền_Hoặc_Biểu_Thức> [Ghi chú]
   ```
-- **Quy tắc dấu số tiền:**
+- **Quy tắc dấu và biểu thức toán học:**
   - Có dấu `+` hoặc **không ghi dấu** (ví dụ: `50k`, `+50k`, `200.000`) -> Hiểu là khoản **THU** (cộng vào số dư).
-  - Có dấu `-` ở đầu (ví dụ: `-50k`, `-200.000`) -> Hiểu là khoản **CHI** (trừ vào số dư).
+  - Có dấu `-` ở đầu (ví dụ: `-50k`, `-(120k+30k)/3`) -> Hiểu là khoản **CHI** (trừ vào số dư).
+  - Hỗ trợ đầy đủ 4 phép toán Cộng (`+`), Trừ (`-`), Nhân (`*`, `×`), Chia (`/`, `÷`) và Ngoặc đơn `( )`.
 - **Quy tắc giá trị mặc định:**
-  - Nếu người dùng không nhập `<Ngân_Hàng>`, tự động gán là `Chung` (nếu dùng tiền mặt người dùng sẽ chủ động nhập `CASH`).
-  - Nếu người dùng không nhập `#Tag`, tự động gán là `#CHUNG`.
-
-### 1.3. Tự động lưu Ảnh Hóa Đơn (Bill) lên Google Drive
-- Khi người dùng gửi tin nhắn kèm ảnh hóa đơn (hoặc gửi ảnh trước rồi nhập lệnh ngay sau, hoặc trả lời lệnh vào ảnh), Bot tự động tải ảnh có độ phân giải cao nhất từ Telegram lên thư mục `SuperFinanceBot_Bills` trên Google Drive.
-- Đường dẫn xem ảnh được trả về ngay trong tin nhắn phản hồi và được lưu vào cột `Link Ảnh Bill` trong bảng giao dịch tương ứng.
-
-### 1.4. Lưu sổ liên thông qua các kỳ (`/reset` và `/chotso`)
-- Tuyệt đối không xóa mất dữ liệu giao dịch lịch sử khi sang tháng mới hoặc khi reset.
-- Khi gọi `/reset` hoặc `/chotso`:
-  - Toàn bộ từng dòng giao dịch hiện có trong `Thu Chi` và `Quỹ Phụ` phải được di chuyển nguyên vẹn sang nối tiếp ở cuối bảng `Lịch Sử Chốt Sổ`, tạo thành một sổ cái lịch sử liên thông xuyên suốt các tháng.
-  - Với `/reset`: Sau khi chuyển toàn bộ giao dịch cũ sang `Lịch Sử Chốt Sổ`, làm trống bảng hiện tại để toàn bộ số dư các Ngân hàng, `#Tag` và 2 Quỹ trở về `0 đ`.
-  - Với `/chotso` (`/renew`): Sau khi chuyển toàn bộ giao dịch cũ sang `Lịch Sử Chốt Sổ`, gom số dư hiện tại của từng cặp `(Ngân hàng, #Tag)` thành các dòng `Số dư đầu kỳ` cho kỳ mới.
-
-### 1.5. Phân quyền Đa Tài khoản (`ALLOWED_USER_IDS`)
-- Cho phép cấu hình nhiều tài khoản Telegram được phép sử dụng Bot, ngăn cách bởi dấu phẩy (ví dụ: `8544500048, 1678072401`).
-- Nếu tài khoản không nằm trong danh sách được phép nhắn tin tới Bot, hệ thống chặn toàn bộ xử lý phía sau và chỉ trả về chuỗi:
-  ```text
-  Bot 2.1.1 Loading...
-  ```
+  - Không nhập `<Ngân_Hàng>` -> Tự động gán là `Chung`.
+  - Không nhập `#Tag` -> Tự động gán là `#CHUNG`.
 
 ---
 
-## 2. Quy chuẩn Kỹ thuật & Vận hành Bắt buộc
+## 2. Yêu cầu Quản lý Dữ liệu, Ảnh Bill & Bảo mật
 
-1. **Kiến trúc SOLID & Ghi chú đầu file:**
-   - Mã nguồn trong `src/` được tách theo đúng trách nhiệm: `core/`, `services/`, `controllers/`, `F1ActivateBot.js`, `GrantAllPermission.js`, `main.js`.
-   - Dòng đầu tiên của mọi file mã nguồn bắt buộc có ghi chú tên file đó (ví dụ: `// F1ActivateBot.js //`).
-2. **Bảo toàn `F1ActivateBot.js`, mục điền `WEBAPP_URL` và `GrantAllPermission.js`:**
-   - File `F1ActivateBot.js` luôn được đặt ở vị trí số 1 và `GrantAllPermission.js` ở vị trí số 2 trong `filePushOrder` của `.clasp.json`.
-   - Tuyệt đối không xóa hoặc ẩn mục điền `'WEBAPP_URL'` trong hàm `setupEnvironment()`.
-   - Hàm `ActivateBot()` luôn gọi `GrantAllPermissions()` để cấp toàn bộ quyền Google Apps Script trong 1 lần chạy duy nhất.
-3. **Chống hiện tượng Lặp lệnh (Anti-Reply-Storm) & Cầu chì dừng khẩn cấp:**
-   - Hàm `doPost(e)` luôn trả về `HtmlService.createHtmlOutput("OK")` trên Google Apps Script để tránh lỗi `302 Found Redirect`.
-   - Kiểm tra 3 tầng bảo vệ trong `securityGuard.js`: Cờ `EMERGENCY_STOP`, khử trùng lặp `update_id` (`CacheService` + `ScriptProperties`), và bỏ qua tin nhắn quá hạn (`MAX_MESSAGE_AGE_SECONDS = 180`).
+1. **Tự động lưu Ảnh Hóa Đơn (Bill) lên Google Drive:**
+   - Lưu ảnh vào thư mục `SuperFinanceBot_Bills` trên Google Drive qua cả 4 hình thức: tải lên từ màn hình `Open UI Mode`, gửi ảnh kèm Caption lệnh, gửi ảnh rời trước câu lệnh (trong 5 phút), hoặc bấm Reply lệnh vào ảnh.
+2. **Lưu sổ liên thông qua các kỳ (`/reset` và `/chotso`):**
+   - Toàn bộ các dòng giao dịch hiện có trong `Thu Chi` và `Quỹ Phụ` được di chuyển nguyên vẹn sang nối tiếp ở cuối bảng `Lịch Sử Chốt Sổ`, tạo thành sổ cái liên thông xuyên suốt các tháng, tuyệt đối không làm mất dữ liệu cũ.
+3. **Phân quyền Đa Tài khoản (`ALLOWED_USER_IDS`):**
+   - Cho phép nhiều tài khoản Telegram truy cập theo danh sách ID ngăn cách bởi dấu phẩy.
+   - Tài khoản không có trong danh sách chỉ nhận phản hồi mặc định: `Bot 2.2.0 Loading...`.
+4. **Bảo toàn `F1ActivateBot.js`, mục điền `WEBAPP_URL` và `GrantAllPermission.js`:**
+   - File `F1ActivateBot.js` luôn ở vị trí số 1 và `GrantAllPermission.js` ở vị trí số 2.
+   - Hàm `ActivateBot()` tự động gọi `GrantAllPermissions()` để cấp trọn bộ quyền Google Apps Script trong 1 lần bấm Run duy nhất.

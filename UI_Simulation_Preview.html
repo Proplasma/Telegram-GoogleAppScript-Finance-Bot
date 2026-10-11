@@ -1,0 +1,2374 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mô Phỏng Giao Diện Telegram Bot - @SuperFinanceGAS_bot (v2.1.1 UI Mode)</title>
+  <style>
+    :root {
+      --bg-page: #0f172a;
+      --tg-bg: #0e1621;
+      --tg-header: #17212b;
+      --tg-msg-bot: #182533;
+      --tg-msg-user: #2b5278;
+      --tg-panel: #17212b;
+      --tg-key: #242f3d;
+      --tg-key-hover: #2f3e50;
+      --tg-primary: #3b82f6;
+      --tg-primary-hover: #2563eb;
+      --tg-accent: #10b981;
+      --tg-danger: #ef4444;
+      --tg-warning: #f59e0b;
+      --tg-border: #2b394a;
+      --tg-text: #f1f5f9;
+      --tg-muted: #94a3b8;
+      --ui-bg: #111827;
+      --ui-card: #1f2937;
+      --ui-border: #374151;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Arial, sans-serif;
+    }
+
+    html,
+    body,
+    .tg-chat-area,
+    .webapp-body {
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: #3b82f6 rgba(15, 23, 42, 0.7);
+    }
+
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.75);
+      border-radius: 999px;
+      margin: 6px 0;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+      border-radius: 999px;
+      border: 1.5px solid rgba(15, 23, 42, 0.85);
+      min-height: 36px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #93c5fd 0%, #3b82f6 100%);
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--tg-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      gap: 14px;
+    }
+
+    /* Top Guide Bar outside phone */
+    .sim-banner {
+      width: 100%;
+      max-width: 1140px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sim-banner-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .sim-banner-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .sim-quick-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .sim-btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 7px 13px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .sim-btn:hover {
+      background: #1d4ed8;
+    }
+
+    .sim-btn.secondary {
+      background: #334155;
+    }
+
+    .sim-btn.secondary:hover {
+      background: #475569;
+    }
+
+    /* Main Workspace Layout: Phone Simulator + Live Sheet State Inspector */
+    .workspace {
+      width: 100%;
+      max-width: 1140px;
+      display: grid;
+      grid-template-columns: 465px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Phone Frame */
+    .phone-frame {
+      width: 100%;
+      max-width: 465px;
+      height: 840px;
+      background: var(--tg-bg);
+      border: 2px solid #334155;
+      border-radius: 22px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55);
+      margin: 0 auto;
+    }
+
+    /* Telegram Header */
+    .tg-header {
+      background: var(--tg-header);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--tg-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 5;
+    }
+
+    .tg-bot-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tg-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 0.5px;
+    }
+
+    .tg-bot-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .tg-bot-status {
+      font-size: 11px;
+      color: #38bdf8;
+    }
+
+    .tg-header-badge {
+      font-size: 11px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 4px 8px;
+      border-radius: 5px;
+    }
+
+    /* Chat History Area */
+    .tg-chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: radial-gradient(circle at top right, #132030, #0e1621 70%);
+    }
+
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      max-width: 93%;
+    }
+
+    .msg-row.bot {
+      align-self: flex-start;
+    }
+
+    .msg-row.user {
+      align-self: flex-end;
+    }
+
+    .msg-bubble {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      word-break: break-word;
+      position: relative;
+    }
+
+    .msg-row.bot .msg-bubble {
+      background: var(--tg-msg-bot);
+      border: 1px solid #223346;
+      color: #e2e8f0;
+      border-top-left-radius: 3px;
+    }
+
+    .msg-row.user .msg-bubble {
+      background: var(--tg-msg-user);
+      color: #ffffff;
+      border-top-right-radius: 3px;
+    }
+
+    .msg-pre {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 11.5px;
+      white-space: pre-wrap;
+      background: #0b131c;
+      border: 1px solid #223244;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-top: 6px;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+
+    .msg-time {
+      font-size: 10px;
+      color: var(--tg-muted);
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    /* Inline Keyboard attached to Bot message */
+    .inline-kb {
+      display: grid;
+      gap: 5px;
+      margin-top: 6px;
+    }
+
+    .inline-kb.cols-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .inline-btn {
+      background: #203142;
+      border: 1px solid #2e445b;
+      color: #e2e8f0;
+      padding: 7px 8px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s;
+    }
+
+    .inline-btn:hover {
+      background: #2b4259;
+    }
+
+    .inline-btn.danger {
+      background: #3b1d26;
+      border-color: #6e2938;
+      color: #fca5a5;
+    }
+
+    .inline-btn.primary {
+      background: #1d3a5f;
+      border-color: #2f5c94;
+      color: #93c5fd;
+    }
+
+    /* Input Bar */
+    .tg-input-bar {
+      background: var(--tg-panel);
+      border-top: 1px solid var(--tg-border);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tg-attach-btn {
+      background: #242f3d;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tg-attach-btn:hover {
+      background: #2f3e50;
+    }
+
+    .tg-text-input {
+      flex: 1;
+      background: #0e1621;
+      border: 1px solid #2b394a;
+      color: #f8fafc;
+      padding: 8px 11px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      outline: none;
+    }
+
+    .tg-text-input:focus {
+      border-color: var(--tg-primary);
+    }
+
+    .tg-send-btn {
+      background: var(--tg-primary);
+      color: #ffffff;
+      border: none;
+      padding: 8px 13px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tg-send-btn:hover {
+      background: var(--tg-primary-hover);
+    }
+
+    /* Bottom Persistent Reply Keyboard */
+    .tg-reply-keyboard {
+      background: #141d26;
+      border-top: 1px solid var(--tg-border);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rk-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .rk-row.full {
+      grid-template-columns: 1fr;
+    }
+
+    .rk-btn {
+      background: var(--tg-key);
+      border: 1px solid #314052;
+      color: #f1f5f9;
+      padding: 9px 10px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .rk-btn:hover {
+      background: var(--tg-key-hover);
+    }
+
+    .rk-btn.open-ui-btn {
+      background: #1d4ed8;
+      border-color: #3b82f6;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px;
+      letter-spacing: 0.3px;
+    }
+
+    .rk-btn.open-ui-btn:hover {
+      background: #2563eb;
+    }
+
+    /* ======================================================================
+       SLIDE-UP WEB APP DRAWER ("OPEN UI MODE")
+       ====================================================================== */
+    .webapp-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 13, 20, 0.72);
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .webapp-overlay.open {
+      display: flex;
+    }
+
+    .webapp-sheet {
+      height: 94%;
+      background: var(--ui-bg);
+      border-top: 2px solid #3b82f6;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .webapp-topbar {
+      background: #1e293b;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--ui-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .webapp-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .webapp-sub {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .webapp-close-btn {
+      background: #334155;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .webapp-close-btn:hover {
+      background: #475569;
+    }
+
+    /* Live Balance Strip inside WebApp */
+    .webapp-balance-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #0f172a;
+      border-bottom: 1px solid var(--ui-border);
+    }
+
+    .bal-card {
+      background: linear-gradient(135deg, #172554 0%, #1e293b 100%);
+      border: 1px solid #2563eb;
+      border-radius: 8px;
+      padding: 8px 10px;
+      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.15);
+    }
+
+    .bal-card.sub {
+      background: linear-gradient(135deg, #2e1065 0%, #1e293b 100%);
+      border: 1px solid #7c3aed;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+    }
+
+    .bal-label {
+      font-size: 10.5px;
+      color: #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .bal-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 2px;
+    }
+
+    .bal-card.sub .bal-val {
+      color: #c084fc;
+    }
+
+    /* WebApp Navigation Tabs */
+    .webapp-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      background: #1e293b;
+      border-bottom: 1px solid var(--ui-border);
+    }
+
+    .webapp-tab {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #94a3b8;
+      padding: 10px 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .webapp-tab.active {
+      color: #60a5fa;
+      border-bottom-color: #3b82f6;
+      background: #152033;
+    }
+
+    .webapp-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .tab-pane {
+      display: none;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .tab-pane.active {
+      display: flex;
+    }
+
+    /* Form Controls in WebApp */
+    .ui-section {
+      background: var(--ui-card);
+      border: 1px solid var(--ui-border);
+      border-radius: 9px;
+      padding: 10px 12px;
+    }
+
+    .ui-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-bottom: 7px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .seg-group {
+      display: grid;
+      gap: 6px;
+    }
+
+    .seg-group.cols-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .seg-group.cols-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .seg-btn {
+      background: #111827;
+      border: 1px solid #374151;
+      color: #cbd5e1;
+      padding: 8px 6px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .seg-btn.active {
+      background: #1d4ed8;
+      border-color: #60a5fa;
+      color: #ffffff;
+    }
+
+    .seg-btn.expense.active {
+      background: linear-gradient(135deg, #b91c1c, #dc2626);
+      border-color: #f87171;
+      color: #ffffff;
+    }
+
+    .seg-btn.income.active {
+      background: linear-gradient(135deg, #047857, #059669);
+      border-color: #34d399;
+      color: #ffffff;
+    }
+
+    /* Pill Selector for Banks & Tags */
+    .pill-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pill-btn {
+      background: #111827;
+      border: 1px solid #374151;
+      color: #e2e8f0;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pill-btn span.sub {
+      font-size: 10px;
+      color: #94a3b8;
+      font-weight: 400;
+    }
+
+    .pill-btn.active {
+      background: #1e3a8a;
+      border-color: #60a5fa;
+      color: #ffffff;
+    }
+
+    .pill-btn.active span.sub {
+      color: #bfdbfe;
+    }
+
+    /* Full Calculator Box (+, -, *, /, parentheses) */
+    .calc-display {
+      background: #0b111d;
+      border: 1px solid #374151;
+      border-radius: 7px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .calc-expr-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: #93c5fd;
+      font-size: 13px;
+      font-family: "Consolas", monospace;
+      text-align: right;
+      outline: none;
+    }
+
+    .calc-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px dashed #1e293b;
+      padding-top: 4px;
+    }
+
+    .calc-total-hint {
+      font-size: 10.5px;
+      color: #64748b;
+    }
+
+    .calc-total {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f8fafc;
+      font-family: "Consolas", monospace;
+    }
+
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+
+    .calc-key {
+      background: #111827;
+      border: 1px solid #374151;
+      color: #f1f5f9;
+      padding: 8px 4px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.12s;
+    }
+
+    .calc-key:hover {
+      background: #263246;
+    }
+
+    .calc-key.op {
+      background: #1e293b;
+      border-color: #475569;
+      color: #60a5fa;
+      font-size: 13.5px;
+    }
+
+    .calc-key.paren {
+      background: #172030;
+      color: #cbd5e1;
+    }
+
+    .calc-key.fast {
+      background: #172554;
+      border-color: #1d4ed8;
+      color: #bfdbfe;
+      font-size: 11px;
+    }
+
+    .calc-key.clear {
+      background: #3f1d28;
+      border-color: #7f1d1d;
+      color: #fca5a5;
+      font-size: 11.5px;
+    }
+
+    .calc-key.equal {
+      grid-column: span 4;
+      background: linear-gradient(135deg, #065f46, #047857);
+      border-color: #10b981;
+      color: #ecfdf5;
+      font-size: 12px;
+      padding: 7px;
+      margin-top: 2px;
+    }
+
+    .calc-key.equal:hover {
+      background: #047857;
+    }
+
+    /* Inputs & Bill Attachment */
+    .ui-input {
+      width: 100%;
+      background: #0b111d;
+      border: 1px solid #374151;
+      color: #f8fafc;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .ui-input:focus {
+      border-color: #3b82f6;
+    }
+
+    .bill-upload-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bill-btn-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .bill-pick-btn {
+      background: #1e293b;
+      border: 1px dashed #3b82f6;
+      color: #93c5fd;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+    }
+
+    .bill-pick-btn:hover {
+      background: #334155;
+    }
+
+    .bill-preview {
+      display: none;
+      background: #0b111d;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .bill-preview.show {
+      display: flex;
+    }
+
+    .bill-meta {
+      font-size: 11.5px;
+      color: #cbd5e1;
+    }
+
+    .bill-remove-btn {
+      background: #451a23;
+      border: 1px solid #7f1d1d;
+      color: #fca5a5;
+      padding: 4px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .cmd-preview-bar {
+      background: #0b111d;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-family: "Consolas", monospace;
+      font-size: 11.5px;
+      color: #93c5fd;
+    }
+
+    .submit-tx-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      border: 1px solid #60a5fa;
+      color: #ffffff;
+      padding: 11px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.4px;
+    }
+
+    .submit-tx-btn:hover {
+      background: #1d4ed8;
+    }
+
+    /* Tables in Tab 2 & Tab 3 */
+    .ui-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+    }
+
+    .ui-table th,
+    .ui-table td {
+      border: 1px solid #334155;
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    .ui-table th {
+      background: #111827;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    .ui-table td.num,
+    .ui-table th.num {
+      text-align: right;
+      font-family: "Consolas", monospace;
+    }
+
+    /* Limit Progress Bars */
+    .limit-item {
+      border: 1px solid #334155;
+      background: #111827;
+      border-radius: 7px;
+      padding: 8px 10px;
+      margin-bottom: 7px;
+    }
+
+    .limit-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 7px;
+      background: #1f2937;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+    }
+
+    /* Right Panel: Live Database & Instruction Inspector */
+    .inspector-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .inspector-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f8fafc;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+    }
+
+    .inspector-desc {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .guide-list {
+      list-style: decimal;
+      padding-left: 18px;
+      font-size: 12.5px;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      line-height: 1.45;
+    }
+
+    .tx-pos {
+      color: #34d399;
+      font-weight: 700;
+    }
+
+    .tx-neg {
+      color: #f87171;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Thanh điều khiển nhanh trên cùng -->
+  <div class="sim-banner">
+    <div>
+      <div class="sim-banner-title">🚀 MÔ PHỎNG GIAO DIỆN TƯƠNG TÁC BOT TÀI CHÍNH (@SuperFinanceGAS_bot - Bản v2.2.0 Hybrid UI)</div>
+      <div class="sim-banner-sub">✨ Hỗ trợ đầy đủ phép tính Cộng (+), Trừ (-), Nhân (×), Chia (÷), Ngoặc đơn ( ) trên cả Máy tính UI và Dòng lệnh.</div>
+    </div>
+    <div class="sim-quick-actions">
+      <button class="sim-btn" onclick="openWebApp('tab-record')">📱 Mở Ngay "Open UI Mode"</button>
+      <button class="sim-btn secondary" onclick="startInChatWizard()">➕ Thử "Ghi Thu/Chi" Trong Chat (4 Bước)</button>
+      <button class="sim-btn secondary" onclick="resetDemoData()">🔄 Khôi Phục Dữ Liệu Mẫu</button>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <!-- CỘT TRÁI: MÀN HÌNH TELEGRAM GIẢ LẬP -->
+    <div class="phone-frame">
+      <!-- Header Telegram -->
+      <div class="tg-header">
+        <div class="tg-bot-info">
+          <div class="tg-avatar">SF</div>
+          <div>
+            <div class="tg-bot-name">@SuperFinanceGAS_bot</div>
+            <div class="tg-bot-status">🟢 bot • Đang hoạt động (v2.2.0 Hybrid UI)</div>
+          </div>
+        </div>
+        <div class="tg-header-badge">🆔 123456789</div>
+      </div>
+
+      <!-- Luồng tin nhắn Chat -->
+      <div class="tg-chat-area" id="chatArea"></div>
+
+      <!-- Thanh nhập lệnh truyền thống + Đính kèm Bill trong chat -->
+      <div class="tg-input-bar">
+        <label class="tg-attach-btn" title="Giả lập gửi Ảnh Bill trong luồng chat">
+          📸 + Ảnh Bill
+          <input type="file" id="chatBillInput" accept="image/*" style="display:none" onchange="handleChatPhotoUpload(event)" />
+        </label>
+        <input
+          type="text"
+          id="chatTextInput"
+          class="tg-text-input"
+          placeholder="Gõ lệnh (VD: /c MB #ANUONG -(120k+30k)/3 ăn trưa)..."
+          onkeydown="if(event.key==='Enter') handleUserSendText()"
+        />
+        <button class="tg-send-btn" onclick="handleUserSendText()">Gửi ➤</button>
+      </div>
+
+      <!-- BÀN PHÍM CỐ ĐỊNH DƯỚI ĐÁY MÀN HÌNH (REPLY KEYBOARD) -->
+      <div class="tg-reply-keyboard">
+        <div class="rk-row full">
+          <button class="rk-btn open-ui-btn" onclick="openWebApp('tab-record')">📱 Open UI Mode</button>
+        </div>
+        <div class="rk-row">
+          <button class="rk-btn" onclick="startInChatWizard()">➕ Ghi Thu / Chi</button>
+          <button class="rk-btn" onclick="simulateCommand('/sodu')">📊 Xem Số Dư</button>
+        </div>
+        <div class="rk-row">
+          <button class="rk-btn" onclick="simulateCommand('/ls')">📜 5 GD Gần Nhất</button>
+          <button class="rk-btn" onclick="simulateCommand('/undo')">↩️ Hoàn Tác (Undo)</button>
+        </div>
+        <div class="rk-row">
+          <button class="rk-btn" onclick="startInChatLimitWizard()">🎯 Đặt Hạn Mức</button>
+          <button class="rk-btn" onclick="startInChatClosingMenu()">📅 Chốt Sổ / Reset</button>
+        </div>
+      </div>
+
+      <!-- ==================================================================
+           CỬA SỔ WEB APP TRƯỢT LÊN KHI BẤM "OPEN UI MODE"
+           ================================================================== -->
+      <div class="webapp-overlay" id="webAppOverlay">
+        <div class="webapp-sheet">
+          <!-- Thanh tiêu đề Web App -->
+          <div class="webapp-topbar">
+            <div>
+              <div class="webapp-title">📱 Open UI Mode • Bảng Điều Khiển Tài Chính</div>
+              <div class="webapp-sub">⚡ Đồng bộ trực tiếp với Google Sheets & Google Drive</div>
+            </div>
+            <button class="webapp-close-btn" onclick="closeWebApp()">✖ Đóng</button>
+          </div>
+
+          <!-- Thanh số dư trực tiếp -->
+          <div class="webapp-balance-strip">
+            <div class="bal-card">
+              <div class="bal-label">📘 Tổng Số Dư Quỹ Chung (/c)</div>
+              <div class="bal-val" id="uiTopBalC">0 đ</div>
+            </div>
+            <div class="bal-card sub">
+              <div class="bal-label">📙 Tổng Số Dư Quỹ Phụ (/lcb)</div>
+              <div class="bal-val" id="uiTopBalLCB">0 đ</div>
+            </div>
+          </div>
+
+          <!-- 3 Tab Điều Hướng -->
+          <div class="webapp-tabs">
+            <button class="webapp-tab active" id="btnTabRecord" onclick="switchWebAppTab('tab-record')">➕ 1. Ghi Thu Chi</button>
+            <button class="webapp-tab" id="btnTabBalance" onclick="switchWebAppTab('tab-balance')">📊 2. Số Dư & Hạn Mức</button>
+            <button class="webapp-tab" id="btnTabHistory" onclick="switchWebAppTab('tab-history')">📜 3. Lịch Sử & Sổ</button>
+          </div>
+
+          <!-- Nội dung các Tab -->
+          <div class="webapp-body">
+
+            <!-- TAB 1: GHI THU CHI + MÁY TÍNH (+ - * /) + ĐÍNH KÈM ẢNH BILL -->
+            <div class="tab-pane active" id="tab-record">
+              <div class="ui-section">
+                <div class="ui-label"><span>🏦 1. Chọn Quỹ Ghi Chép</span></div>
+                <div class="seg-group cols-3">
+                  <button class="seg-btn active" id="fundBtn_c" onclick="selectUiFund('c')">📘 Quỹ Chung (/c)</button>
+                  <button class="seg-btn" id="fundBtn_lcb" onclick="selectUiFund('lcb')">📙 Quỹ Phụ (/lcb)</button>
+                  <button class="seg-btn" id="fundBtn_clcb" onclick="selectUiFund('clcb')">📗 Cả 2 Quỹ (/clcb)</button>
+                </div>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label"><span>💸 2. Chiều Giao Dịch</span></div>
+                <div class="seg-group cols-2">
+                  <button class="seg-btn expense active" id="signBtn_minus" onclick="selectUiSign('-')">🔴 CHI RA (-)</button>
+                  <button class="seg-btn income" id="signBtn_plus" onclick="selectUiSign('+')">🟢 THU VÀO (+)</button>
+                </div>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label">
+                  <span>💳 3. Nguồn Tiền / Ngân Hàng</span>
+                  <span style="color:#60a5fa;cursor:pointer" onclick="promptAddNewBank()">➕ Thêm ngân hàng</span>
+                </div>
+                <div class="pill-wrap" id="uiBankPills"></div>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label">
+                  <span>🏷️ 4. Phân Loại (#Tag)</span>
+                  <span style="color:#60a5fa;cursor:pointer" onclick="promptAddNewTag()">➕ Thêm #Tag</span>
+                </div>
+                <div class="pill-wrap" id="uiTagPills"></div>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label">
+                  <span>🧮 5. Số Tiền & Máy Tính (+, -, ×, ÷, Ngoặc)</span>
+                  <span style="color:#94a3b8;font-weight:400">Bấm nút hoặc gõ trực tiếp</span>
+                </div>
+                <div class="calc-display">
+                  <input
+                    type="text"
+                    id="calcExprInput"
+                    class="calc-expr-input"
+                    value="35000*2+15000"
+                    oninput="handleManualExprInput(event)"
+                    placeholder="Nhập phép tính (VD: (120k+30k)/3 hoặc 35000*2)"
+                  />
+                  <div class="calc-total-row">
+                    <span class="calc-total-hint" id="calcFormulaHint">✅ Biểu thức hợp lệ</span>
+                    <div class="calc-total" id="calcTotalDisplay">85,000 đ</div>
+                  </div>
+                </div>
+
+                <div class="calc-grid">
+                  <!-- Hàng 1: Ngoặc đơn & Xóa -->
+                  <button class="calc-key paren" onclick="pressCalc('(')">(</button>
+                  <button class="calc-key paren" onclick="pressCalc(')')">)</button>
+                  <button class="calc-key op" onclick="pressCalc('BACK')">⌫ Lùi</button>
+                  <button class="calc-key clear" onclick="pressCalc('C')">🗑 Xóa (C)</button>
+
+                  <!-- Hàng 2: 7 8 9 Chia -->
+                  <button class="calc-key" onclick="pressCalc('7')">7</button>
+                  <button class="calc-key" onclick="pressCalc('8')">8</button>
+                  <button class="calc-key" onclick="pressCalc('9')">9</button>
+                  <button class="calc-key op" onclick="pressCalc('/')">÷ Chia</button>
+
+                  <!-- Hàng 3: 4 5 6 Nhân -->
+                  <button class="calc-key" onclick="pressCalc('4')">4</button>
+                  <button class="calc-key" onclick="pressCalc('5')">5</button>
+                  <button class="calc-key" onclick="pressCalc('6')">6</button>
+                  <button class="calc-key op" onclick="pressCalc('*')">× Nhân</button>
+
+                  <!-- Hàng 4: 1 2 3 Trừ -->
+                  <button class="calc-key" onclick="pressCalc('1')">1</button>
+                  <button class="calc-key" onclick="pressCalc('2')">2</button>
+                  <button class="calc-key" onclick="pressCalc('3')">3</button>
+                  <button class="calc-key op" onclick="pressCalc('-')">− Trừ</button>
+
+                  <!-- Hàng 5: 0 .000(k) .000.000(tr) Cộng -->
+                  <button class="calc-key" onclick="pressCalc('0')">0</button>
+                  <button class="calc-key fast" onclick="pressCalc('000')">.000 (k)</button>
+                  <button class="calc-key fast" onclick="pressCalc('000000')">.000.000 (tr)</button>
+                  <button class="calc-key op" onclick="pressCalc('+')">+ Cộng</button>
+
+                  <!-- Hàng 6: Nút = thu gọn kết quả -->
+                  <button class="calc-key equal" onclick="pressCalc('=')">✅ = TÍNH KẾT QUẢ GỌN</button>
+                </div>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label"><span>📝 6. Nội Dung Ghi Chú & Ảnh Hóa Đơn (Bill)</span></div>
+                <input
+                  type="text"
+                  id="uiNoteInput"
+                  class="ui-input"
+                  value="Mua 2 ly trà đào + 1 topping"
+                  placeholder="Nhập ghi chú (Ví dụ: Mua trà đào, Ăn trưa chia 3 người...)"
+                  oninput="updateUiCommandPreview()"
+                  style="margin-bottom: 8px;"
+                />
+
+                <div class="bill-upload-box">
+                  <div class="bill-btn-row">
+                    <label class="bill-pick-btn">
+                      📸 Đính kèm Ảnh Bill (Tải lên Google Drive)
+                      <input type="file" id="uiBillInput" accept="image/*" style="display:none" onchange="handleUiBillSelected(event)" />
+                    </label>
+                  </div>
+                  <div class="bill-preview" id="uiBillPreviewBox">
+                    <div class="bill-meta" id="uiBillMetaText">Chưa chọn ảnh</div>
+                    <button class="bill-remove-btn" onclick="clearUiBill()">✖ Xóa ảnh</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cmd-preview-bar" id="uiCmdPreview">
+                Lệnh tương đương: /c Techcombank #TRADA -(35000*2+15000) [= -85,000 đ]
+              </div>
+
+              <button class="submit-tx-btn" onclick="submitUiTransaction()">
+                💾 LƯU GIAO DỊCH VÀO GOOGLE SHEETS
+              </button>
+            </div>
+
+            <!-- TAB 2: SỐ DƯ NGÂN HÀNG & QUẢN LÝ HẠN MỨC -->
+            <div class="tab-pane" id="tab-balance">
+              <div class="ui-section">
+                <div class="ui-label"><span>🏦 Bảng Số Dư Theo Ngân Hàng (/sodu)</span></div>
+                <table class="ui-table">
+                  <thead>
+                    <tr>
+                      <th>Ngân hàng</th>
+                      <th class="num">Quỹ Chung (/c)</th>
+                      <th class="num">Quỹ Phụ (/lcb)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="uiBankBalanceTable"></tbody>
+                </table>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label"><span>🎯 Theo Dõi Hạn Mức Chi Tiêu Theo #Tag (/limit)</span></div>
+                <div id="uiLimitProgressList"></div>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label"><span>⚙️ Cài Đặt / Cập Nhật Hạn Mức Tháng Mới</span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                  <select id="uiLimitTagSelect" class="ui-input"></select>
+                  <input type="text" id="uiLimitAmountInput" class="ui-input" placeholder="Nhập hạn mức (VD: 500k hoặc 200000*3)" />
+                </div>
+                <button class="submit-tx-btn" style="padding:9px;font-size:12px;" onclick="saveUiLimit()">
+                  🎯 CẬP NHẬT HẠN MỨC (/limit)
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB 3: LỊCH SỬ GIAO DỊCH, HOÀN TÁC & CHỐT SỔ -->
+            <div class="tab-pane" id="tab-history">
+              <div class="ui-section">
+                <div class="ui-label"><span>📜 5 Giao Dịch Gần Nhất (/ls)</span></div>
+                <table class="ui-table">
+                  <thead>
+                    <tr>
+                      <th>Mã</th>
+                      <th>Quỹ / NH / Tag</th>
+                      <th class="num">Biểu thức / Số tiền</th>
+                      <th>Nội dung / Bill</th>
+                    </tr>
+                  </thead>
+                  <tbody id="uiHistoryTableBody"></tbody>
+                </table>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label"><span>↩️ Hoàn Tác Giao Dịch Vừa Nhập (/undo)</span></div>
+                <div id="uiLastTxSummary" style="font-size:12px;color:#cbd5e1;margin-bottom:8px;"></div>
+                <button class="submit-tx-btn" style="background:linear-gradient(135deg,#b45309,#d97706);border-color:#f59e0b;padding:9px;font-size:12px;" onclick="triggerUndoFromUi()">
+                  ↩️ HOÀN TÁC GIAO DỊCH CUỐI (/undo)
+                </button>
+              </div>
+
+              <div class="ui-section">
+                <div class="ui-label"><span>📅 Quản Trị Sổ Cuối Kỳ (Lưu Trữ Vào Sheet "Lịch Sử Chốt Sổ")</span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <button class="seg-btn" style="border-color:#3b82f6;color:#93c5fd;padding:10px;" onclick="triggerClosingFromUi('chotso')">
+                    📅 Chốt Sổ Tháng Mới (/chotso)<br/>
+                    <span style="font-size:10px;color:#94a3b8;font-weight:400;">Giữ số dư làm đầu kỳ mới</span>
+                  </button>
+                  <button class="seg-btn" style="border-color:#ef4444;color:#fca5a5;padding:10px;" onclick="triggerClosingFromUi('reset')">
+                    🧹 Reset Về 0 (/reset)<br/>
+                    <span style="font-size:10px;color:#94a3b8;font-weight:400;">Cất lịch sử & đưa số dư về 0</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CỘT PHẢI: BẢNG QUAN SÁT DỮ LIỆU GOOGLE SHEETS THỜI GIAN THỰC -->
+    <div class="inspector-card">
+      <div class="inspector-title">📊 TRẠNG THÁI DATABASE GOOGLE SHEETS (ĐỒNG BỘ TRỰC TIẾP TRONG BẢN MÔ PHỎNG)</div>
+      <div class="inspector-desc">
+        Mọi thao tác bạn bấm trên <strong>📱 "Open UI Mode"</strong>, chọn qua <strong>➕ Wizard 4 bước trong Chat</strong>, hoặc <strong>⌨️ gõ lệnh trực tiếp</strong> ở khung bên trái đều hỗ trợ phép tính <strong>Cộng (+), Trừ (-), Nhân (*), Chia (/), Ngoặc đơn ( )</strong> và cập nhật ngay vào bảng dữ liệu bên dưới.
+      </div>
+
+      <div>
+        <div class="ui-label"><span>💡 Hướng dẫn thử nghiệm nhanh phép tính Cộng - Trừ - Nhân - Chia</span></div>
+        <ol class="guide-list">
+          <li><strong>Trong "Open UI Mode":</strong> Bấm nút <code>📱 Open UI Mode</code> -> Trên máy tính tích hợp đã có sẵn biểu thức mẫu <code>35000*2+15000</code> (= <code>85,000 đ</code>). Bạn có thể bấm thêm <code>÷ Chia</code>, <code>× Nhân</code>, <code>(</code>, <code>)</code>, <code>.000 (k)</code> rồi bấm <strong>💾 LƯU GIAO DỊCH</strong>.</li>
+          <li><strong>Trong Wizard 4 bước:</strong> Bấm <code>➕ Ghi Thu / Chi</code> -> Chọn Quỹ -> Chọn Ngân hàng -> Chọn #Tag -> Gõ thử <code>(120k+30k)/3 ăn trưa chia 3</code>.</li>
+          <li><strong>Gõ lệnh trực tiếp:</strong> Gõ thử <code>/c Techcombank #ANUONG -(45k*2+30k)/3 tiền nước chia 3</code> vào ô chat.</li>
+        </ol>
+      </div>
+
+      <div>
+        <div class="ui-label">
+          <span>🏦 Bảng Tổng Hợp Số Dư Hiện Tại</span>
+          <span id="archiveCountBadge" style="color:#38bdf8;">📦 Lịch sử chốt sổ đã lưu: 12 GD kỳ trước</span>
+        </div>
+        <table class="ui-table">
+          <thead>
+            <tr>
+              <th>Ngân hàng</th>
+              <th class="num">Số dư Quỹ Chung (/c)</th>
+              <th class="num">Số dư Quỹ LCB (/lcb)</th>
+            </tr>
+          </thead>
+          <tbody id="inspectorBankTable"></tbody>
+        </table>
+      </div>
+
+      <div>
+        <div class="ui-label"><span>Danh Sách Giao Dịch Trong Kỳ Hiện Tại (Lưu Cả Cột Biểu Thức & Số Tiền)</span></div>
+        <table class="ui-table">
+          <thead>
+            <tr>
+              <th>Mã GD</th>
+              <th>Quỹ</th>
+              <th>Ngân hàng</th>
+              <th>#Tag</th>
+              <th class="num">Biểu thức gốc</th>
+              <th class="num">Số tiền</th>
+              <th>Nội dung</th>
+              <th>Ảnh Bill</th>
+            </tr>
+          </thead>
+          <tbody id="inspectorTxTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. DỮ LIỆU GIẢ LẬP BAN ĐẦU (MOCK GOOGLE SHEETS DATA)
+    // =========================================================================
+    let state = {};
+
+    function getInitialState() {
+      return {
+        banks: ["Techcombank", "MB", "CASH", "Chung"],
+        tags: ["#TRADA", "#ANUONG", "#LUONG", "#DIADIEM", "#CHUNG"],
+        balances: {
+          c: {
+            Techcombank: 12450000,
+            MB: 4850000,
+            CASH: 1115000,
+            Chung: 0
+          },
+          lcb: {
+            Techcombank: 8000000,
+            MB: 2500000,
+            CASH: 445000,
+            Chung: 0
+          }
+        },
+        tagTotals: {
+          c: {
+            "#TRADA": -245000,
+            "#ANUONG": -1650000,
+            "#LUONG": 18000000,
+            "#DIADIEM": -450000,
+            "#CHUNG": -120000
+          },
+          lcb: {
+            "#TRADA": -55000,
+            "#ANUONG": -400000,
+            "#LUONG": 10000000,
+            "#DIADIEM": 0,
+            "#CHUNG": 0
+          }
+        },
+        limits: {
+          "#TRADA": 300000,
+          "#ANUONG": 3000000,
+          "#DIADIEM": 1000000
+        },
+        transactions: [
+          {
+            id: "TX101",
+            time: "10/10 08:30",
+            fund: "/c",
+            bank: "Techcombank",
+            tag: "#LUONG",
+            expr: "15000000",
+            amount: 15000000,
+            note: "Lương tháng 10",
+            billUrl: ""
+          },
+          {
+            id: "TX102",
+            time: "10/10 12:15",
+            fund: "/c",
+            bank: "MB",
+            tag: "#ANUONG",
+            expr: "-(255000/3)",
+            amount: -85000,
+            note: "Cơm trưa chia 3 người",
+            billUrl: "https://drive.google.com/file/d/bill_102"
+          },
+          {
+            id: "TX103",
+            time: "10/10 15:40",
+            fund: "/c",
+            bank: "Techcombank",
+            tag: "#TRADA",
+            expr: "-(25000*2+5000)",
+            amount: -55000,
+            note: "2 Trà đào + trân châu",
+            billUrl: ""
+          },
+          {
+            id: "TX104",
+            time: "11/10 07:50",
+            fund: "/lcb",
+            bank: "CASH",
+            tag: "#TRADA",
+            expr: "-35000",
+            amount: -35000,
+            note: "Trà đá sáng",
+            billUrl: ""
+          },
+          {
+            id: "TX105",
+            time: "11/10 08:20",
+            fund: "/c",
+            bank: "MB",
+            tag: "#DIADIEM",
+            expr: "-150000",
+            amount: -150000,
+            note: "Vé gửi xe tháng",
+            billUrl: "https://drive.google.com/file/d/bill_105"
+          }
+        ],
+        archivedCount: 12,
+        txCounter: 106,
+        wizard: null,
+        pendingChatBill: null,
+        uiForm: {
+          fund: "c",
+          sign: "-",
+          bank: "Techcombank",
+          tag: "#TRADA",
+          calcExpr: "35000*2+15000",
+          note: "Mua 2 ly trà đào + 1 topping",
+          billFile: null
+        }
+      };
+    }
+
+    function formatMoney(n) {
+      const sign = n < 0 ? "-" : "";
+      return sign + Math.abs(Math.round(n)).toLocaleString("en-US") + " đ";
+    }
+
+    function formatSignedMoney(n) {
+      const sign = n >= 0 ? "+" : "-";
+      return sign + Math.abs(Math.round(n)).toLocaleString("en-US") + " đ";
+    }
+
+    function nowTimeStr() {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `11/10 ${hh}:${mm}`;
+    }
+
+    // =========================================================================
+    // 2. BỘ TÍNH TOÁN BIỂU THỨC SỐ HỌC AN TOÀN (+, -, *, /, NGOẶC ĐƠN, k, tr)
+    // =========================================================================
+    function expandShorthandUnits(rawStr) {
+      return String(rawStr || "")
+        .toLowerCase()
+        .replace(/,/g, "")
+        .replace(/×/g, "*")
+        .replace(/÷/g, "/")
+        .replace(/(\d+(?:\.\d+)?)\s*(tr|m)\b/gi, "($1*1000000)")
+        .replace(/(\d+(?:\.\d+)?)\s*k\b/gi, "($1*1000)");
+    }
+
+    function evaluateMathExpression(rawExpr) {
+      if (rawExpr === null || rawExpr === undefined) return null;
+      const expanded = expandShorthandUnits(rawExpr).replace(/\s+/g, "");
+      if (!expanded) return null;
+
+      // Chỉ cho phép chữ số, dấu chấm thập phân, +, -, *, /, (, )
+      if (!/^[0-9+\-*/().]+$/.test(expanded)) {
+        return null;
+      }
+      // Chặn các toán tử lặp bất hợp lệ như ** hoặc //
+      if (/[*/]{2,}/.test(expanded)) {
+        return null;
+      }
+
+      try {
+        const val = Function('"use strict"; return (' + expanded + ');')();
+        if (typeof val !== "number" || !isFinite(val) || isNaN(val)) {
+          return null;
+        }
+        return Math.round(val);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // =========================================================================
+    // 3. KHỞI TẠO & CẬP NHẬT GIAO DIỆN ĐỒNG BỘ
+    // =========================================================================
+    function initSimulation() {
+      state = getInitialState();
+      const chatArea = document.getElementById("chatArea");
+      chatArea.innerHTML = "";
+
+      appendBotMessage(
+        "Hệ thống <b>@SuperFinanceGAS_bot (v2.1.1 + Hybrid UI)</b> đã sẵn sàng.\n" +
+        "Hỗ trợ đầy đủ phép tính <b>Cộng (+), Trừ (-), Nhân (×), Chia (÷), Ngoặc đơn ( )</b>:\n" +
+        "1. Bấm nút <b>[ Open UI Mode ]</b> ở dưới đáy màn hình để dùng bàn phím máy tính đầy đủ.\n" +
+        "2. Bấm nút <b>[ + Ghi Thu / Chi ]</b> để chọn từng bước ngay trong chat.\n" +
+        "3. Gõ lệnh trực tiếp như: <code>/c Techcombank #ANUONG -(120k+30k)/3 ăn trưa</code>.",
+        buildReceiptBox([
+          "Phiên bản     : v2.1.1 (Hybrid UI)",
+          "Bot           : @SuperFinanceGAS_bot",
+          "Allowed IDs   : 123456789, 987654321",
+          "Máy tính      : Cộng (+) Trừ (-) Nhân (*) Chia (/)",
+          "Quỹ Chung (/c): " + formatMoney(getTotalFund("c")),
+          "Quỹ LCB (/lcb): " + formatMoney(getTotalFund("lcb"))
+        ])
+      );
+
+      document.getElementById("calcExprInput").value = state.uiForm.calcExpr;
+      refreshAllViews();
+    }
+
+    function resetDemoData() {
+      closeWebApp();
+      initSimulation();
+    }
+
+    function getTotalFund(fundKey) {
+      const map = state.balances[fundKey] || {};
+      return Object.values(map).reduce((acc, v) => acc + v, 0);
+    }
+
+    function buildReceiptBox(lines) {
+      const maxLen = Math.max(...lines.map(l => l.length), 38);
+      const top = "┌─" + "─".repeat(maxLen) + "─┐";
+      const bottom = "└─" + "─".repeat(maxLen) + "─┘";
+      const body = lines.map(l => "│ " + l.padEnd(maxLen, " ") + " │").join("\n");
+      return `${top}\n${body}\n${bottom}`;
+    }
+
+    function refreshAllViews() {
+      // Top balances in WebApp
+      document.getElementById("uiTopBalC").textContent = formatMoney(getTotalFund("c"));
+      document.getElementById("uiTopBalLCB").textContent = formatMoney(getTotalFund("lcb"));
+
+      // Render Bank Pills in Tab 1
+      const bankWrap = document.getElementById("uiBankPills");
+      bankWrap.innerHTML = "";
+      state.banks.forEach(bank => {
+        const bal = state.balances.c[bank] || 0;
+        const btn = document.createElement("button");
+        btn.className = "pill-btn" + (state.uiForm.bank === bank ? " active" : "");
+        btn.innerHTML = `<span>${bank}</span><span class="sub">(${Math.round(bal / 1000)}k)</span>`;
+        btn.onclick = () => {
+          state.uiForm.bank = bank;
+          refreshAllViews();
+        };
+        bankWrap.appendChild(btn);
+      });
+
+      // Render Tag Pills in Tab 1
+      const tagWrap = document.getElementById("uiTagPills");
+      tagWrap.innerHTML = "";
+      state.tags.forEach(tag => {
+        const lim = state.limits[tag];
+        const btn = document.createElement("button");
+        btn.className = "pill-btn" + (state.uiForm.tag === tag ? " active" : "");
+        btn.innerHTML = `<span>${tag}</span>` + (lim ? `<span class="sub">(Hạn mức: ${Math.round(lim / 1000)}k)</span>` : "");
+        btn.onclick = () => {
+          state.uiForm.tag = tag;
+          refreshAllViews();
+        };
+        tagWrap.appendChild(btn);
+      });
+
+      // Update Calculator display & Command preview
+      updateCalcDisplay();
+      updateUiCommandPreview();
+
+      // Render Tab 2: Bank Balance Table
+      const bankTableHtml = state.banks.map(b => {
+        const valC = state.balances.c[b] || 0;
+        const valLCB = state.balances.lcb[b] || 0;
+        return `<tr>
+          <td><strong>${b}</strong></td>
+          <td class="num">${formatMoney(valC)}</td>
+          <td class="num">${formatMoney(valLCB)}</td>
+        </tr>`;
+      }).join("") + `<tr style="background:#172554;font-weight:700;">
+        <td>TỔNG CỘNG</td>
+        <td class="num">${formatMoney(getTotalFund("c"))}</td>
+        <td class="num">${formatMoney(getTotalFund("lcb"))}</td>
+      </tr>`;
+      document.getElementById("uiBankBalanceTable").innerHTML = bankTableHtml;
+      document.getElementById("inspectorBankTable").innerHTML = bankTableHtml;
+
+      // Render Tab 2: Limit Progress Bars
+      const limitList = document.getElementById("uiLimitProgressList");
+      limitList.innerHTML = "";
+      Object.keys(state.limits).forEach(tag => {
+        const limitVal = state.limits[tag];
+        const spent = Math.abs(Math.min(0, state.tagTotals.c[tag] || 0));
+        const pct = limitVal > 0 ? Math.min(100, Math.round((spent / limitVal) * 100)) : 0;
+        const rawPct = limitVal > 0 ? Math.round((spent / limitVal) * 100) : 0;
+        let barColor = "#10b981";
+        let statusLabel = "An toàn";
+        if (rawPct >= 100) {
+          barColor = "#ef4444";
+          statusLabel = "VƯỢT HẠN MỨC";
+        } else if (rawPct >= 80) {
+          barColor = "#f59e0b";
+          statusLabel = "Sắp chạm trần";
+        }
+        limitList.innerHTML += `
+          <div class="limit-item">
+            <div class="limit-head">
+              <span>${tag} (${statusLabel})</span>
+              <span>Đã chi: ${formatMoney(spent)} / ${formatMoney(limitVal)} (${rawPct}%)</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width:${pct}%;background:${barColor};"></div>
+            </div>
+          </div>
+        `;
+      });
+
+      // Populate Limit Tag Select
+      const tagSelect = document.getElementById("uiLimitTagSelect");
+      const currentSelectedTag = tagSelect.value || state.tags[0];
+      tagSelect.innerHTML = state.tags.map(t => `<option value="${t}">${t}</option>`).join("");
+      tagSelect.value = currentSelectedTag;
+
+      // Render Tab 3 & Inspector: Recent Transactions
+      const recent5 = state.transactions.slice(-5).reverse();
+      document.getElementById("uiHistoryTableBody").innerHTML = recent5.length
+        ? recent5.map(tx => `
+          <tr>
+            <td><strong>${tx.id}</strong><br/><span style="font-size:10px;color:#94a3b8">${tx.time}</span></td>
+            <td>${tx.fund} | ${tx.bank}<br/><span style="color:#93c5fd">${tx.tag}</span></td>
+            <td class="num">
+              <span style="font-size:10px;color:#94a3b8">${escapeHtml(tx.expr || String(tx.amount))}</span><br/>
+              <span class="${tx.amount >= 0 ? 'tx-pos' : 'tx-neg'}">${formatSignedMoney(tx.amount)}</span>
+            </td>
+            <td>${tx.note || "-"} ${tx.billUrl ? `<br/><a href="${tx.billUrl}" target="_blank" style="color:#38bdf8;font-size:10.5px;">[Xem Ảnh Bill]</a>` : ""}</td>
+          </tr>
+        `).join("")
+        : `<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Chưa có giao dịch nào trong kỳ hiện tại</td></tr>`;
+
+      const lastTx = state.transactions[state.transactions.length - 1];
+      document.getElementById("uiLastTxSummary").innerHTML = lastTx
+        ? `Giao dịch gần nhất: <strong>${lastTx.id}</strong> (${lastTx.fund} | ${lastTx.bank} | ${lastTx.tag} | Biểu thức: <code>${escapeHtml(lastTx.expr)}</code> = <strong>${formatSignedMoney(lastTx.amount)}</strong> | ${lastTx.note})`
+        : `Hiện không có giao dịch nào để hoàn tác.`;
+
+      // Render Right Inspector Full Table
+      document.getElementById("archiveCountBadge").textContent =
+        `Lịch sử chốt sổ đã lưu: ${state.archivedCount} GD`;
+
+      document.getElementById("inspectorTxTable").innerHTML = state.transactions.length
+        ? state.transactions.slice().reverse().map(tx => `
+          <tr>
+            <td><strong>${tx.id}</strong></td>
+            <td>${tx.fund}</td>
+            <td>${tx.bank}</td>
+            <td>${tx.tag}</td>
+            <td class="num" style="color:#93c5fd">${escapeHtml(tx.expr || String(tx.amount))}</td>
+            <td class="num ${tx.amount >= 0 ? 'tx-pos' : 'tx-neg'}">${formatSignedMoney(tx.amount)}</td>
+            <td>${tx.note || "-"}</td>
+            <td>${tx.billUrl ? `<span style="color:#38bdf8">Đã lưu Drive</span>` : `<span style="color:#64748b">Không</span>`}</td>
+          </tr>
+        `).join("")
+        : `<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Sheet Giao Dịch hiện tại đang trống (Đã chuyển vào Lịch Sử Chốt Sổ)</td></tr>`;
+    }
+
+    // =========================================================================
+    // 4. XỬ LÝ TIN NHẮN TRONG LUỒNG CHAT & IN-CHAT WIZARD 4 BƯỚC
+    // =========================================================================
+    function appendUserMessage(text) {
+      const chatArea = document.getElementById("chatArea");
+      const row = document.createElement("div");
+      row.className = "msg-row user";
+      row.innerHTML = `
+        <div class="msg-bubble">
+          <div>${escapeHtml(text)}</div>
+          <div class="msg-time">${nowTimeStr()}</div>
+        </div>
+      `;
+      chatArea.appendChild(row);
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function appendBotMessage(htmlText, preBoxText = "", inlineButtons = []) {
+      const chatArea = document.getElementById("chatArea");
+      const row = document.createElement("div");
+      row.className = "msg-row bot";
+
+      let preHtml = preBoxText ? `<div class="msg-pre">${escapeHtml(preBoxText)}</div>` : "";
+      let kbHtml = "";
+      if (inlineButtons && inlineButtons.length > 0) {
+        kbHtml = `<div class="inline-kb cols-2">` + inlineButtons.map(b =>
+          `<button class="inline-btn ${b.style || ''}" onclick="${b.onClick}">${b.label}</button>`
+        ).join("") + `</div>`;
+      }
+
+      row.innerHTML = `
+        <div class="msg-bubble">
+          <div>${htmlText.replace(/\n/g, "<br/>")}</div>
+          ${preHtml}
+          ${kbHtml}
+          <div class="msg-time">${nowTimeStr()}</div>
+        </div>
+      `;
+      chatArea.appendChild(row);
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    // In-Chat 4-Step Wizard
+    function startInChatWizard() {
+      closeWebApp();
+      state.wizard = { step: 1, fund: "c", sign: "-", bank: "Techcombank", tag: "#TRADA" };
+      appendBotMessage(
+        "<b>[WIZARD BƯỚC 1/4]</b> Chọn Quỹ và Chiều giao dịch bạn muốn ghi:",
+        "",
+        [
+          { label: "CHI Quỹ Chung (/c -)", style: "danger", onClick: "wizardPickStep1('c', '-')" },
+          { label: "THU Quỹ Chung (/c +)", style: "primary", onClick: "wizardPickStep1('c', '+')" },
+          { label: "CHI Quỹ LCB (/lcb -)", style: "danger", onClick: "wizardPickStep1('lcb', '-')" },
+          { label: "THU Quỹ LCB (/lcb +)", style: "primary", onClick: "wizardPickStep1('lcb', '+')" },
+          { label: "CHI Cả 2 Quỹ (/clcb -)", style: "danger", onClick: "wizardPickStep1('clcb', '-')" },
+          { label: "THU Cả 2 Quỹ (/clcb +)", style: "primary", onClick: "wizardPickStep1('clcb', '+')" },
+          { label: "Hủy thao tác", onClick: "cancelWizard()" }
+        ]
+      );
+    }
+
+    function wizardPickStep1(fund, sign) {
+      state.wizard = { step: 2, fund, sign, bank: "Techcombank", tag: "#TRADA" };
+      const btns = state.banks.map(b => ({
+        label: b,
+        style: "primary",
+        onClick: `wizardPickStep2('${b}')`
+      }));
+      btns.push({ label: "Hủy thao tác", onClick: "cancelWizard()" });
+
+      appendBotMessage(
+        `<b>[WIZARD BƯỚC 2/4]</b> Đã chọn: <b>${sign === '-' ? 'CHI RA' : 'THU VÀO'} (/${fund})</b>.\nHãy chọn <b>Ngân hàng / Nguồn tiền</b>:`,
+        "",
+        btns
+      );
+    }
+
+    function wizardPickStep2(bank) {
+      if (!state.wizard) return;
+      state.wizard.step = 3;
+      state.wizard.bank = bank;
+      const btns = state.tags.map(t => ({
+        label: t,
+        style: "primary",
+        onClick: `wizardPickStep3('${t}')`
+      }));
+      btns.push({ label: "Hủy thao tác", onClick: "cancelWizard()" });
+
+      appendBotMessage(
+        `<b>[WIZARD BƯỚC 3/4]</b> Nguồn tiền: <b>${bank}</b>.\nHãy chọn <b>Phân loại (#Tag)</b>:`,
+        "",
+        btns
+      );
+    }
+
+    function wizardPickStep3(tag) {
+      if (!state.wizard) return;
+      state.wizard.step = 4;
+      state.wizard.tag = tag;
+      appendBotMessage(
+        `<b>[WIZARD BƯỚC 4/4]</b> Đang chờ nhập số tiền hoặc phép tính cho:\n` +
+        `Quỹ: <code>/${state.wizard.fund}</code> | Chiều: <b>${state.wizard.sign === '-' ? 'CHI (-)' : 'THU (+)'}</b> | Ngân hàng: <b>${state.wizard.bank}</b> | Tag: <b>${state.wizard.tag}</b>\n\n` +
+        `Hãy gõ <b>&lt;Số tiền hoặc Phép tính + - * /&gt; &lt;Ghi chú&gt;</b> vào ô chat bên dưới (Ví dụ: <code>(120k+30k)/3 ăn trưa</code> hoặc <code>35k*2 trà đào</code>):`,
+        "",
+        [{ label: "Hủy thao tác", onClick: "cancelWizard()" }]
+      );
+      document.getElementById("chatTextInput").focus();
+    }
+
+    function cancelWizard() {
+      state.wizard = null;
+      appendBotMessage("Đã hủy thao tác chọn nút từng bước.");
+    }
+
+    function startInChatLimitWizard() {
+      closeWebApp();
+      const btns = state.tags.map(t => ({
+        label: `Đặt hạn mức ${t}`,
+        style: "primary",
+        onClick: `promptSetLimitFromChat('${t}')`
+      }));
+      appendBotMessage(
+        "<b>[QUẢN LÝ HẠN MỨC]</b> Chọn #Tag bạn muốn đặt hạn mức hoặc mở <b>Open UI Mode -> Tab 2</b>:",
+        "",
+        btns
+      );
+    }
+
+    function promptSetLimitFromChat(tag) {
+      const val = prompt(`Nhập hạn mức chi tiêu tháng cho ${tag} (Hỗ trợ cả phép tính như 100k*5):`, state.limits[tag] || 500000);
+      if (!val) return;
+      simulateCommand(`/limit ${tag} ${val}`);
+    }
+
+    function startInChatClosingMenu() {
+      closeWebApp();
+      appendBotMessage(
+        "<b>[QUẢN TRỊ SỔ CUỐI KỲ]</b>\n" +
+        "- <b>Chốt Sổ (/chotso)</b>: Cất toàn bộ giao dịch hiện tại vào sheet <i>Lịch Sử Chốt Sổ</i>, giữ nguyên số dư hiện tại làm đầu kỳ tháng mới.\n" +
+        "- <b>Reset (/reset)</b>: Cất toàn bộ giao dịch hiện tại vào sheet <i>Lịch Sử Chốt Sổ</i> và đưa số dư về 0.",
+        "",
+        [
+          { label: "Xác nhận Chốt Sổ (/chotso)", style: "primary", onClick: "simulateCommand('/chotso')" },
+          { label: "Xác nhận Reset Về 0 (/reset)", style: "danger", onClick: "simulateCommand('/reset')" }
+        ]
+      );
+    }
+
+    // Upload Photo in Chat
+    function handleChatPhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      state.pendingChatBill = {
+        name: file.name,
+        url: "https://drive.google.com/file/d/chat_bill_" + Date.now()
+      };
+      appendUserMessage(`[Đã gửi Ảnh Bill: ${file.name}]`);
+      appendBotMessage(
+        `Đã nhận Ảnh Bill <b>${escapeHtml(file.name)}</b> và lưu tạm vào bộ nhớ đệm (5 phút).\n` +
+        `Gõ lệnh giao dịch tiếp theo (ví dụ: <code>/c Techcombank #ANUONG -(120k+30k)/3 ăn trưa</code>) để tự động đính kèm ảnh này vào Google Drive.`
+      );
+      event.target.value = "";
+    }
+
+    // Handle Text Input in Chat
+    function handleUserSendText() {
+      const input = document.getElementById("chatTextInput");
+      const raw = input.value.trim();
+      if (!raw) return;
+      input.value = "";
+
+      // If user types a slash command, always override wizard and execute command
+      if (raw.startsWith("/")) {
+        state.wizard = null;
+        simulateCommand(raw);
+        return;
+      }
+
+      // If in Wizard Step 4, combine wizard selections with typed amount/expression + note
+      if (state.wizard && state.wizard.step === 4) {
+        const w = state.wizard;
+        state.wizard = null;
+        appendUserMessage(raw);
+        const tokenParts = raw.split(/\s+/);
+        const exprToken = tokenParts[0];
+        const noteText = tokenParts.slice(1).join(" ") || "Ghi từ In-Chat Wizard";
+        const absVal = evaluateMathExpression(exprToken);
+        if (absVal === null || absVal === 0) {
+          appendBotMessage("Biểu thức số tiền không hợp lệ. Vui lòng thử lại.");
+          return;
+        }
+        const signedExpr = w.sign === "-" ? `-(${exprToken.replace(/^[+-]/, "")})` : `+(${exprToken.replace(/^[+-]/, "")})`;
+        const builtCmd = `/${w.fund} ${w.bank} ${w.tag} ${signedExpr} ${noteText}`;
+        executeParsedCommand(builtCmd, null, false);
+        return;
+      }
+
+      appendUserMessage(raw);
+      appendBotMessage(
+        "Cú pháp chưa bắt đầu bằng dấu <code>/</code>. Bạn có thể:\n" +
+        "- Bấm nút <b>[ Open UI Mode ]</b> ở dưới đáy màn hình.\n" +
+        "- Bấm <b>[ + Ghi Thu / Chi ]</b> để nhập từng bước.\n" +
+        "- Hoặc gõ <code>/c Techcombank #TRADA -(35k*2+15k) mua trà đào</code>."
+      );
+    }
+
+    // =========================================================================
+    // 5. BỘ XỬ LÝ CÂU LỆNH CLI & GHI GIAO DỊCH DÙNG CHUNG CHO CẢ CHAT & WEB APP
+    // =========================================================================
+    function simulateCommand(cmdText) {
+      appendUserMessage(cmdText);
+      executeParsedCommand(cmdText, null, false);
+    }
+
+    function executeParsedCommand(cmdText, attachedBillObj = null, fromWebApp = false) {
+      const parts = cmdText.trim().split(/\s+/);
+      const cmd = parts[0].toLowerCase();
+
+      if (cmd === "/sodu" || cmd === "/balance") {
+        const lines = [
+          "BÁO CÁO SỐ DƯ TÀI KHOẢN (/sodu)",
+          "──────────────────────────────────────────"
+        ];
+        state.banks.forEach(b => {
+          const vc = formatMoney(state.balances.c[b] || 0).padStart(13, " ");
+          const vl = formatMoney(state.balances.lcb[b] || 0).padStart(13, " ");
+          lines.push(`${b.padEnd(12, " ")} | /c: ${vc} | /lcb: ${vl}`);
+        });
+        lines.push("──────────────────────────────────────────");
+        lines.push(`TỔNG QUỸ /c  : ${formatMoney(getTotalFund("c"))}`);
+        lines.push(`TỔNG QUỸ /lcb: ${formatMoney(getTotalFund("lcb"))}`);
+        appendBotMessage("Bảng tổng hợp số dư hiện tại:", buildReceiptBox(lines));
+        return;
+      }
+
+      if (cmd === "/ls" || cmd === "/history") {
+        const recent = state.transactions.slice(-5).reverse();
+        const lines = [
+          "5 GIAO DỊCH GẦN NHẤT (/ls)",
+          "──────────────────────────────────────────"
+        ];
+        if (recent.length === 0) {
+          lines.push("Chưa có giao dịch nào trong kỳ hiện tại.");
+        } else {
+          recent.forEach(tx => {
+            lines.push(`${tx.id} | ${tx.fund} | ${tx.bank} | ${tx.tag} | ${tx.expr} = ${formatSignedMoney(tx.amount)} | ${tx.note}${tx.billUrl ? " [Có Bill]" : ""}`);
+          });
+        }
+        appendBotMessage("Danh sách 5 giao dịch gần nhất:", buildReceiptBox(lines));
+        return;
+      }
+
+      if (cmd === "/undo") {
+        if (state.transactions.length === 0) {
+          appendBotMessage("Không có giao dịch nào trong kỳ hiện tại để hoàn tác (/undo).");
+          return;
+        }
+        const popped = state.transactions.pop();
+        const targetFunds = popped.fund === "/clcb" ? ["c", "lcb"] : [popped.fund.replace("/", "")];
+        targetFunds.forEach(fk => {
+          state.balances[fk][popped.bank] = (state.balances[fk][popped.bank] || 0) - popped.amount;
+          state.tagTotals[fk][popped.tag] = (state.tagTotals[fk][popped.tag] || 0) - popped.amount;
+        });
+        refreshAllViews();
+        appendBotMessage(
+          "Đã hoàn tác giao dịch gần nhất thành công:",
+          buildReceiptBox([
+            `Mã GD đã xóa : ${popped.id}`,
+            `Quỹ          : ${popped.fund}`,
+            `Ngân hàng    : ${popped.bank}`,
+            `Phân loại    : ${popped.tag}`,
+            `Biểu thức    : ${popped.expr}`,
+            `Số tiền hoàn : ${formatSignedMoney(-popped.amount)}`,
+            `Số dư /c mới : ${formatMoney(getTotalFund("c"))}`
+          ])
+        );
+        return;
+      }
+
+      if (cmd === "/limit") {
+        const tagArg = (parts[1] || "#TRADA").toUpperCase();
+        const tagFormatted = tagArg.startsWith("#") ? tagArg : "#" + tagArg;
+        const limVal = evaluateMathExpression(parts[2] || "0");
+        if (limVal === null || limVal <= 0) {
+          appendBotMessage("Cú pháp đúng: <code>/limit #TAG Số_tiền</code> (Ví dụ: <code>/limit #TRADA 300k</code> hoặc <code>/limit #ANUONG 100k*30</code>)");
+          return;
+        }
+        if (!state.tags.includes(tagFormatted)) state.tags.push(tagFormatted);
+        state.limits[tagFormatted] = Math.abs(limVal);
+        refreshAllViews();
+        appendBotMessage(
+          "Đã cập nhật hạn mức chi tiêu tháng:",
+          buildReceiptBox([
+            `Phân loại (#Tag) : ${tagFormatted}`,
+            `Biểu thức nhập   : ${parts[2]}`,
+            `Hạn mức mới      : ${formatMoney(Math.abs(limVal))}`
+          ])
+        );
+        return;
+      }
+
+      if (cmd === "/chotso" || cmd === "/renew") {
+        const moved = state.transactions.length;
+        state.archivedCount += moved;
+        state.transactions = [];
+        refreshAllViews();
+        appendBotMessage(
+          "Đã thực hiện <b>Chốt Sổ Tháng Mới (/chotso)</b>:",
+          buildReceiptBox([
+            `Giao dịch đã lưu trữ : ${moved} GD -> Sheet 'Lịch Sử Chốt Sổ'`,
+            `Tổng lưu trữ tích lũy: ${state.archivedCount} GD`,
+            `Số dư chuyển kỳ mới  : Giữ nguyên 100%`,
+            `Tổng Quỹ Chung (/c)  : ${formatMoney(getTotalFund("c"))}`,
+            `Tổng Quỹ LCB (/lcb)  : ${formatMoney(getTotalFund("lcb"))}`
+          ])
+        );
+        return;
+      }
+
+      if (cmd === "/reset") {
+        const moved = state.transactions.length;
+        state.archivedCount += moved;
+        state.transactions = [];
+        state.banks.forEach(b => {
+          state.balances.c[b] = 0;
+          state.balances.lcb[b] = 0;
+        });
+        Object.keys(state.tagTotals.c).forEach(t => (state.tagTotals.c[t] = 0));
+        Object.keys(state.tagTotals.lcb).forEach(t => (state.tagTotals.lcb[t] = 0));
+        refreshAllViews();
+        appendBotMessage(
+          "Đã thực hiện <b>Reset Số Dư Về 0 (/reset)</b> (Toàn bộ giao dịch cũ đã được bảo toàn trong <i>Lịch Sử Chốt Sổ</i>):",
+          buildReceiptBox([
+            `Giao dịch đã cất vào kho : ${moved} GD -> Sheet 'Lịch Sử Chốt Sổ'`,
+            `Tổng lưu trữ tích lũy    : ${state.archivedCount} GD`,
+            `Số dư Quỹ Chung (/c)     : 0 đ`,
+            `Số dư Quỹ LCB (/lcb)     : 0 đ`
+          ])
+        );
+        return;
+      }
+
+      // Transaction commands: /c, /lcb, /clcb
+      if (["/c", "/lcb", "/clcb"].includes(cmd)) {
+        let bank = "Chung";
+        let tag = "#CHUNG";
+        let amount = null;
+        let rawExprToken = "";
+        let noteParts = [];
+
+        for (let i = 1; i < parts.length; i++) {
+          const token = parts[i];
+          if (amount === null) {
+            if (token.startsWith("#")) {
+              tag = token.toUpperCase();
+              continue;
+            }
+            const parsedAmt = evaluateMathExpression(token);
+            if (parsedAmt !== null && /^[+-~(0-9]/.test(token)) {
+              amount = parsedAmt;
+              rawExprToken = token;
+              continue;
+            }
+            if (bank === "Chung") {
+              bank = token;
+              continue;
+            }
+          } else {
+            noteParts.push(token);
+          }
+        }
+
+        if (amount === null || amount === 0) {
+          appendBotMessage("Chưa nhập số tiền hoặc phép tính hợp lệ. Ví dụ: <code>/c Techcombank #TRADA -(35k*2+15k) mua trà đào</code>");
+          return;
+        }
+
+        if (!state.banks.includes(bank)) state.banks.push(bank);
+        if (!state.tags.includes(tag)) state.tags.push(tag);
+
+        const targetFunds = cmd === "/clcb" ? ["c", "lcb"] : [cmd.slice(1)];
+        targetFunds.forEach(fk => {
+          state.balances[fk][bank] = (state.balances[fk][bank] || 0) + amount;
+          state.tagTotals[fk][tag] = (state.tagTotals[fk][tag] || 0) + amount;
+        });
+
+        const finalBill = attachedBillObj || state.pendingChatBill;
+        state.pendingChatBill = null;
+
+        const txId = "TX" + state.txCounter++;
+        const noteStr = noteParts.join(" ") || (amount >= 0 ? "Thu tiền" : "Chi tiêu");
+        state.transactions.push({
+          id: txId,
+          time: nowTimeStr(),
+          fund: cmd,
+          bank,
+          tag,
+          expr: rawExprToken,
+          amount,
+          note: noteStr,
+          billUrl: finalBill ? finalBill.url : ""
+        });
+
+        refreshAllViews();
+
+        // Check budget limit warning
+        let limitLine = "Không đặt hạn mức";
+        if (state.limits[tag]) {
+          const spent = Math.abs(Math.min(0, state.tagTotals.c[tag] || 0));
+          const lim = state.limits[tag];
+          const pct = Math.round((spent / lim) * 100);
+          limitLine = `${formatMoney(spent)} / ${formatMoney(lim)} (${pct}%)`;
+          if (pct >= 100) limitLine += " [VƯỢT HẠN MỨC!]";
+          else if (pct >= 80) limitLine += " [Sắp chạm trần]";
+        }
+
+        const receiptLines = [
+          `Mã giao dịch  : ${txId} ${fromWebApp ? "(Ghi từ Open UI Mode)" : ""}`,
+          `Quỹ           : ${cmd.toUpperCase()}`,
+          `Ngân hàng     : ${bank}`,
+          `Phân loại     : ${tag}`,
+          `Biểu thức tính: ${rawExprToken}`,
+          `Số tiền       : ${formatSignedMoney(amount)}`,
+          `Nội dung      : ${noteStr}`,
+          `Ảnh Bill Drive: ${finalBill ? "Đã lưu (" + finalBill.name + ")" : "Không đính kèm"}`,
+          `Hạn mức ${tag.padEnd(6, " ")}: ${limitLine}`,
+          `Số dư NH (${bank}): ${formatMoney(state.balances.c[bank] || 0)}`,
+          `Tổng Quỹ /c   : ${formatMoney(getTotalFund("c"))}`
+        ];
+
+        appendBotMessage(
+          `Đã ghi nhận giao dịch <b>${txId}</b> thành công:`,
+          buildReceiptBox(receiptLines),
+          [{ label: "Hoàn tác giao dịch này (/undo)", style: "danger", onClick: "simulateCommand('/undo')" }]
+        );
+      }
+    }
+
+    // =========================================================================
+    // 6. XỬ LÝ TRONG CỬA SỔ "OPEN UI MODE" (MÁY TÍNH + - * / NGOẶC ĐƠN + BILL)
+    // =========================================================================
+    function openWebApp(defaultTab = "tab-record") {
+      document.getElementById("webAppOverlay").classList.add("open");
+      switchWebAppTab(defaultTab);
+      refreshAllViews();
+    }
+
+    function closeWebApp() {
+      document.getElementById("webAppOverlay").classList.remove("open");
+    }
+
+    function switchWebAppTab(tabId) {
+      ["tab-record", "tab-balance", "tab-history"].forEach(id => {
+        document.getElementById(id).classList.toggle("active", id === tabId);
+      });
+      document.getElementById("btnTabRecord").classList.toggle("active", tabId === "tab-record");
+      document.getElementById("btnTabBalance").classList.toggle("active", tabId === "tab-balance");
+      document.getElementById("btnTabHistory").classList.toggle("active", tabId === "tab-history");
+      refreshAllViews();
+    }
+
+    function selectUiFund(fund) {
+      state.uiForm.fund = fund;
+      ["c", "lcb", "clcb"].forEach(f => {
+        document.getElementById("fundBtn_" + f).classList.toggle("active", f === fund);
+      });
+      updateUiCommandPreview();
+    }
+
+    function selectUiSign(sign) {
+      state.uiForm.sign = sign;
+      document.getElementById("signBtn_minus").classList.toggle("active", sign === "-");
+      document.getElementById("signBtn_plus").classList.toggle("active", sign === "+");
+      updateUiCommandPreview();
+    }
+
+    function promptAddNewBank() {
+      const name = prompt("Nhập tên Ngân hàng / Nguồn tiền mới (Ví dụ: Vietcombank, Momo):");
+      if (!name) return;
+      const clean = name.trim().replace(/\s+/g, "_");
+      if (!state.banks.includes(clean)) {
+        state.banks.push(clean);
+        state.balances.c[clean] = 0;
+        state.balances.lcb[clean] = 0;
+      }
+      state.uiForm.bank = clean;
+      refreshAllViews();
+    }
+
+    function promptAddNewTag() {
+      const name = prompt("Nhập tên #Tag phân loại mới (Ví dụ: #XANGXE, #TIENNHA):");
+      if (!name) return;
+      let clean = name.trim().toUpperCase().replace(/\s+/g, "");
+      if (!clean.startsWith("#")) clean = "#" + clean;
+      if (!state.tags.includes(clean)) {
+        state.tags.push(clean);
+        state.tagTotals.c[clean] = 0;
+        state.tagTotals.lcb[clean] = 0;
+      }
+      state.uiForm.tag = clean;
+      refreshAllViews();
+    }
+
+    // Xử lý bàn phím máy tính đầy đủ Cộng (+), Trừ (-), Nhân (*), Chia (/), Ngoặc đơn ( )
+    function handleManualExprInput(event) {
+      state.uiForm.calcExpr = event.target.value;
+      updateCalcDisplay();
+      updateUiCommandPreview();
+    }
+
+    function pressCalc(key) {
+      let expr = String(state.uiForm.calcExpr || "").trim();
+
+      if (key === "C") {
+        expr = "0";
+      } else if (key === "BACK") {
+        expr = expr.length > 1 ? expr.slice(0, -1) : "0";
+      } else if (key === "=") {
+        const val = evaluateMathExpression(expr);
+        if (val !== null) {
+          expr = String(Math.abs(val));
+        }
+      } else if (["+", "-", "*", "/"].includes(key)) {
+        if (expr === "0") {
+          expr = "0" + key;
+        } else if (/[+\-*/]$/.test(expr)) {
+          expr = expr.slice(0, -1) + key;
+        } else {
+          expr += key;
+        }
+      } else if (key === "(") {
+        if (expr === "0") expr = "(";
+        else if (/\d$/.test(expr) || expr.endsWith(")")) expr += "*(";
+        else expr += "(";
+      } else if (key === ")") {
+        expr += ")";
+      } else {
+        if (expr === "0") expr = key;
+        else expr += key;
+      }
+
+      state.uiForm.calcExpr = expr;
+      const inputEl = document.getElementById("calcExprInput");
+      if (inputEl) inputEl.value = expr;
+      updateCalcDisplay();
+      updateUiCommandPreview();
+    }
+
+    function updateCalcDisplay() {
+      const expr = state.uiForm.calcExpr || "0";
+      const val = evaluateMathExpression(expr);
+      const hintEl = document.getElementById("calcFormulaHint");
+      const totalEl = document.getElementById("calcTotalDisplay");
+
+      if (val === null) {
+        hintEl.textContent = "Đang nhập phép tính...";
+        hintEl.style.color = "#f59e0b";
+        totalEl.textContent = "---";
+      } else {
+        const prettyExpr = expr.replace(/\*/g, " × ").replace(/\//g, " ÷ ");
+        hintEl.textContent = `Biểu thức: ${prettyExpr}`;
+        hintEl.style.color = "#94a3b8";
+        totalEl.textContent = formatMoney(Math.abs(val));
+      }
+    }
+
+    function handleUiBillSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const sizeKB = Math.max(1, Math.round(file.size / 1024));
+      state.uiForm.billFile = {
+        name: file.name,
+        sizeKB,
+        url: "https://drive.google.com/file/d/webapp_bill_" + Date.now()
+      };
+      document.getElementById("uiBillMetaText").textContent =
+        `Ảnh đã chọn: ${file.name} (${sizeKB} KB) -> Sẵn sàng tải lên Google Drive`;
+      document.getElementById("uiBillPreviewBox").classList.add("show");
+      updateUiCommandPreview();
+    }
+
+    function clearUiBill() {
+      state.uiForm.billFile = null;
+      document.getElementById("uiBillInput").value = "";
+      document.getElementById("uiBillPreviewBox").classList.remove("show");
+      updateUiCommandPreview();
+    }
+
+    function updateUiCommandPreview() {
+      const f = state.uiForm;
+      const val = evaluateMathExpression(f.calcExpr);
+      const total = val !== null ? Math.abs(val) : 0;
+      const cleanExpr = String(f.calcExpr || "0").replace(/\s+/g, "");
+      const hasOps = /[+\-*/()]/.test(cleanExpr);
+      const exprToken = hasOps ? `${f.sign}(${cleanExpr})` : `${f.sign}${total}`;
+      const noteVal = document.getElementById("uiNoteInput")
+        ? document.getElementById("uiNoteInput").value.trim()
+        : f.note;
+      const billSuffix = f.billFile ? ` [Đính kèm Bill: ${f.billFile.name}]` : "";
+      const cmdStr = `/${f.fund} ${f.bank} ${f.tag} ${exprToken} ${noteVal || ""}`.trim();
+      document.getElementById("uiCmdPreview").textContent =
+        `Lệnh tương đương: ${cmdStr} [= ${f.sign}${formatMoney(total)}]${billSuffix}`;
+    }
+
+    function submitUiTransaction() {
+      const f = state.uiForm;
+      const val = evaluateMathExpression(f.calcExpr);
+      if (val === null || Math.abs(val) <= 0) {
+        alert("Biểu thức số tiền chưa hợp lệ hoặc bằng 0. Vui lòng kiểm tra lại phép tính (+, -, ×, ÷).");
+        return;
+      }
+      const cleanExpr = String(f.calcExpr || "0").replace(/\s+/g, "");
+      const hasOps = /[+\-*/()]/.test(cleanExpr);
+      const exprToken = hasOps ? `${f.sign}(${cleanExpr})` : `${f.sign}${Math.abs(val)}`;
+      const noteVal = document.getElementById("uiNoteInput").value.trim() || "Ghi từ Open UI Mode";
+      const cmdStr = `/${f.fund} ${f.bank} ${f.tag} ${exprToken} ${noteVal}`;
+      const billCopy = f.billFile ? { ...f.billFile } : null;
+
+      // Clear bill after submit
+      clearUiBill();
+      closeWebApp();
+
+      // Post to chat and execute
+      appendUserMessage(`[Open UI Mode] ${cmdStr}${billCopy ? " + Ảnh Bill: " + billCopy.name : ""}`);
+      executeParsedCommand(cmdStr, billCopy, true);
+    }
+
+    function saveUiLimit() {
+      const tag = document.getElementById("uiLimitTagSelect").value;
+      const rawVal = document.getElementById("uiLimitAmountInput").value.trim().replace(/\s+/g, "");
+      const evaluated = evaluateMathExpression(rawVal);
+      if (!rawVal || evaluated === null || evaluated <= 0) {
+        alert("Vui lòng nhập số tiền hoặc phép tính hạn mức hợp lệ (VD: 500k hoặc 100k*5).");
+        return;
+      }
+      closeWebApp();
+      appendUserMessage(`[Open UI Mode] /limit ${tag} ${rawVal}`);
+      executeParsedCommand(`/limit ${tag} ${rawVal}`, null, true);
+    }
+
+    function triggerUndoFromUi() {
+      closeWebApp();
+      appendUserMessage(`[Open UI Mode] /undo`);
+      executeParsedCommand("/undo", null, true);
+    }
+
+    function triggerClosingFromUi(mode) {
+      const label = mode === "chotso" ? "Chốt Sổ Tháng Mới (/chotso)" : "Reset Toàn Bộ Về 0 (/reset)";
+      const ok = confirm(`Xác nhận thực hiện [${label}]?\nToàn bộ giao dịch hiện tại sẽ được lưu trữ an toàn vào sheet 'Lịch Sử Chốt Sổ'.`);
+      if (!ok) return;
+      closeWebApp();
+      appendUserMessage(`[Open UI Mode] /${mode}`);
+      executeParsedCommand(`/${mode}`, null, true);
+    }
+
+    window.addEventListener("DOMContentLoaded", initSimulation);
+  </script>
+</body>
+</html>
+
+

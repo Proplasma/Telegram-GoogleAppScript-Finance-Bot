@@ -1,7 +1,7 @@
 {
   "name": "telegram-gas-finance-bot",
-  "version": "2.1.1",
-  "description": "2.1.1: Multi-Fund Finance Bot on Google Apps Script - Quan ly Thu Chi Da Quy & Luu So Lien Thong",
+  "version": "2.2.0",
+  "description": "2.2.0 (Hybrid UI): Multi-Fund Finance Bot on Google Apps Script - Open UI Mode 3 Tabs, In-Chat Wizard, Full Calculator (+ - * /) & Continuous Ledger Archive",
   "main": "src/main.js",
   "scripts": {
     "dev": "node local/dev-polling.js",
@@ -17,7 +17,7 @@
     "push:watch": "clasp push --watch",
     "pull": "clasp pull",
     "open": "clasp open",
-    "deploy": "clasp deploy -i YOUR_DEPLOYMENT_ID --description \"Production Release v2.1.1\"",
+    "deploy": "clasp deploy -i YOUR_DEPLOYMENT_ID --description \"Production Release v2.2.0 Hybrid UI\"",
     "logs": "clasp logs"
   },
   "keywords": [
@@ -25,6 +25,8 @@
     "google-apps-script",
     "clasp",
     "finance-bot",
+    "hybrid-ui",
+    "webapp",
     "solid"
   ],
   "author": "",

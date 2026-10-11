@@ -249,6 +249,75 @@ function uploadBillPhotoFromMessage(message, bank, tag) {
   }
 }
 
+/**
+ * Tải ảnh Bill định dạng Base64 từ giao diện Web App ("Open UI Mode") lên Google Drive
+ * @param {string} base64Data - Chuỗi Base64 (có thể kèm prefix data:image/...;base64, hoặc không)
+ * @param {string} mimeType - Kiểu MIME (VD: "image/jpeg" hoặc "image/png")
+ * @param {string} bank - Tên ngân hàng giao dịch
+ * @param {string} tag - Tag giao dịch
+ * @returns {object} { hasPhoto: boolean, billUrl: string, error: string }
+ */
+function uploadBase64BillToDrive(base64Data, mimeType, bank, tag) {
+  if (!base64Data) {
+    return { hasPhoto: false, billUrl: "", error: "" };
+  }
+
+  var rawBase64 = String(base64Data).trim();
+  var commaIdx = rawBase64.indexOf(",");
+  if (commaIdx > -1) {
+    rawBase64 = rawBase64.substring(commaIdx + 1);
+  }
+
+  var timeStamp =
+    typeof Utilities !== "undefined" && Utilities.formatDate
+      ? Utilities.formatDate(new Date(), "Asia/Ho_Chi_Minh", "yyyyMMdd_HHmmss")
+      : String(Date.now());
+  var cleanTag = String(tag || "CHUNG").replace(/[^A-Z0-9_]/gi, "");
+  var cleanBank = String(bank || "Chung").replace(/[^A-Z0-9_]/gi, "");
+  var ext = mimeType && String(mimeType).indexOf("png") > -1 ? ".png" : ".jpg";
+  var fileName = "BILL_UI_" + timeStamp + "_" + cleanBank + "_" + cleanTag + ext;
+
+  // Nếu chạy trên môi trường Local Dev không có DriveApp thật
+  if (typeof DriveApp === "undefined" || typeof Utilities === "undefined" || !Utilities.base64Decode) {
+    Logger.log("[DriveService - Local] Giả lập lưu ảnh Base64 từ UI lên Drive: " + fileName);
+    return {
+      hasPhoto: true,
+      billUrl: "https://drive.google.com/file/d/LOCAL_UI_BILL_" + timeStamp + "/view",
+      error: ""
+    };
+  }
+
+  try {
+    var decodedBytes = Utilities.base64Decode(rawBase64);
+    var finalMime = mimeType || "image/jpeg";
+    var blob = Utilities.newBlob(decodedBytes, finalMime, fileName);
+    var folder = getOrCreateBillFolder();
+    var createdFile = folder ? folder.createFile(blob) : DriveApp.createFile(blob);
+
+    try {
+      createdFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (shareErr) {
+      Logger.log("[DriveService] Giữ quyền xem mặc định cho chủ Drive: " + shareErr.message);
+    }
+
+    var fileUrl = createdFile.getUrl();
+    Logger.log("[DriveService] Đã lưu ảnh Bill từ Open UI Mode lên Drive: " + fileUrl);
+    return {
+      hasPhoto: true,
+      billUrl: fileUrl,
+      error: ""
+    };
+  } catch (err) {
+    Logger.log("[DriveService] Lỗi lưu ảnh Base64 lên Google Drive: " + err.message);
+    logToSheet("DriveService", "Upload UI Bill Error", err.message);
+    return {
+      hasPhoto: true,
+      billUrl: "",
+      error: err.message
+    };
+  }
+}
+
 // Export cho môi trường Node.js Local Dev
 if (typeof module !== "undefined" && module.exports) {
   global.extractPhotoFileIdFromMsg = extractPhotoFileIdFromMsg;
@@ -258,6 +327,7 @@ if (typeof module !== "undefined" && module.exports) {
   global.getOrCreateBillFolder = getOrCreateBillFolder;
   global.checkDrivePermissionStatus = checkDrivePermissionStatus;
   global.uploadBillPhotoFromMessage = uploadBillPhotoFromMessage;
+  global.uploadBase64BillToDrive = uploadBase64BillToDrive;
 
   module.exports = {
     extractPhotoFileIdFromMsg: extractPhotoFileIdFromMsg,
@@ -266,6 +336,7 @@ if (typeof module !== "undefined" && module.exports) {
     resolveBillPhotoFileId: resolveBillPhotoFileId,
     getOrCreateBillFolder: getOrCreateBillFolder,
     checkDrivePermissionStatus: checkDrivePermissionStatus,
-    uploadBillPhotoFromMessage: uploadBillPhotoFromMessage
+    uploadBillPhotoFromMessage: uploadBillPhotoFromMessage,
+    uploadBase64BillToDrive: uploadBase64BillToDrive
   };
 }

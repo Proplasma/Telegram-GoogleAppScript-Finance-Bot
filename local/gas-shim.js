@@ -288,6 +288,7 @@ require("../src/services/driveService");
 require("../src/services/sheetService");
 require("../src/services/financeService");
 require("../src/core/securityGuard");
+require("../src/controllers/uiController");
 require("../src/controllers/commandController");
 require("../src/GrantAllPermission");
 require("../src/F1ActivateBot");

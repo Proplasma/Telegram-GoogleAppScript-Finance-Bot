@@ -4,7 +4,8 @@
  * MODULE: FINANCE PARSER & FORMATTER (SRP)
  * Chuyên trách:
  * 1. Phân tích cú pháp lệnh /c, /lcb, /clcb, /limit
- *    - Hỗ trợ dạng chuẩn: /c <Ngân_Hàng> [#TAG] <Số_Tiền> [Ghi chú]
+ *    - Hỗ trợ dạng chuẩn: /c <Ngân_Hàng> [#TAG] <Số_Tiền_Hoặc_Phép_Tính> [Ghi chú]
+ *    - Hỗ trợ đầy đủ phép tính: Cộng (+), Trừ (-), Nhân (*, x, ×), Chia (/, ÷), Ngoặc đơn ( )
  *    - Quy tắc dấu: '+' hoặc không dấu -> THU (dương), '-' -> CHI (âm)
  *    - Mặc định Ngân hàng -> "Chung", mặc định Tag -> "#CHUNG"
  * 2. Định dạng tiền tệ VNĐ và kẻ khung bảng Unicode rõ nét
@@ -12,25 +13,13 @@
  */
 
 /**
- * Chuyển đổi một hạng tử tiền tệ đơn lẻ (VD: "50k", "-200.000", "1tr5", "1.5tr") sang số nguyên
- * @param {string} rawTerm
+ * Chuyển đổi một hạng tử tiền tệ đơn lẻ không dấu (VD: "50k", "200.000", "1tr5", "1.5tr") sang số thực
+ * @param {string} rawAtom
  * @returns {number|null}
  */
-function parseSingleMoneyTerm(rawTerm) {
-  if (!rawTerm) return null;
-  var s = String(rawTerm).trim().toLowerCase();
-  if (!s) return null;
-
-  // Xác định dấu (+ hoặc không ghi dấu là dương, - là âm)
-  var sign = 1;
-  if (s.charAt(0) === "-") {
-    sign = -1;
-    s = s.substring(1).trim();
-  } else if (s.charAt(0) === "+") {
-    sign = 1;
-    s = s.substring(1).trim();
-  }
-
+function parseUnsignedMoneyAtom(rawAtom) {
+  if (!rawAtom) return null;
+  var s = String(rawAtom).trim().toLowerCase();
   if (!s) return null;
 
   // Hỗ trợ dạng "1tr5" -> 1.5tr, "2k5" -> 2.5k
@@ -41,7 +30,7 @@ function parseSingleMoneyTerm(rawTerm) {
     var decStr = shorthandMatch[3];
     var decVal = parseInt(decStr, 10) / Math.pow(10, decStr.length);
     var mult = unit === "tr" || unit === "m" ? 1000000 : 1000;
-    return Math.round(sign * (mainNum + decVal) * mult);
+    return (mainNum + decVal) * mult;
   }
 
   // Kiểm tra hậu tố đơn vị tiền tệ (k, ng, tr, m, đ, d, vnd)
@@ -74,37 +63,170 @@ function parseSingleMoneyTerm(rawTerm) {
   var num = parseFloat(s);
   if (isNaN(num)) return null;
 
-  return Math.round(sign * num * multiplier);
+  return num * multiplier;
 }
 
 /**
- * Phân tích biểu thức số tiền (hỗ trợ cả số đơn như "50k", "-200.000" lẫn tính gộp "-35k-15k")
+ * Chuyển đổi một hạng tử tiền tệ có dấu đơn lẻ (VD: "50k", "-200.000", "+1tr5") sang số nguyên
+ * @param {string} rawTerm
+ * @returns {number|null}
+ */
+function parseSingleMoneyTerm(rawTerm) {
+  if (!rawTerm) return null;
+  var s = String(rawTerm).trim();
+  if (!s) return null;
+
+  var sign = 1;
+  if (s.charAt(0) === "-") {
+    sign = -1;
+    s = s.substring(1).trim();
+  } else if (s.charAt(0) === "+") {
+    sign = 1;
+    s = s.substring(1).trim();
+  }
+
+  var val = parseUnsignedMoneyAtom(s);
+  if (val === null) return null;
+  return Math.round(sign * val);
+}
+
+/**
+ * Bộ tính toán biểu thức số học đệ quy (Recursive Descent Parser)
+ * Hỗ trợ đầy đủ: Cộng (+), Trừ (-), Nhân (*, ×), Chia (/, ÷), Ngoặc đơn ( ), và các đơn vị tiền tệ (k, tr, 200.000)
+ * Ví dụ:
+ *   "-(35k*2+15k)"   -> -85000
+ *   "-(120k+30k)/3"  -> -50000
+ *   "35000*2+15000"  -> 85000
+ *   "-50k"           -> -50000
+ *
  * @param {string} exprStr
  * @returns {number|null}
  */
 function parseAmountExpression(exprStr) {
-  if (!exprStr) return null;
-  var clean = String(exprStr).trim();
-  if (!clean) return null;
+  if (exprStr === null || exprStr === undefined) return null;
+  var raw = String(exprStr)
+    .trim()
+    .replace(/×/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/\s+/g, "");
 
-  // Tách chuỗi theo các dấu + hoặc - (nhưng giữ nguyên dấu ở đầu mỗi hạng tử)
-  var terms = clean.match(/[+-]?[^+-]+/g);
-  if (!terms || terms.length === 0) return null;
+  if (!raw) return null;
 
-  var total = 0;
-  for (var i = 0; i < terms.length; i++) {
-    var val = parseSingleMoneyTerm(terms[i]);
-    if (val === null) {
-      return null;
+  // Tách chuỗi thành danh sách các Token: Toán tử (+, -, *, /, (, )) và Hạng tử tiền tệ
+  var tokens = [];
+  var i = 0;
+  while (i < raw.length) {
+    var ch = raw.charAt(i);
+    if (ch === "+" || ch === "-" || ch === "*" || ch === "/" || ch === "(" || ch === ")") {
+      tokens.push(ch);
+      i++;
+    } else {
+      var start = i;
+      while (
+        i < raw.length &&
+        raw.charAt(i) !== "+" &&
+        raw.charAt(i) !== "-" &&
+        raw.charAt(i) !== "*" &&
+        raw.charAt(i) !== "/" &&
+        raw.charAt(i) !== "(" &&
+        raw.charAt(i) !== ")"
+      ) {
+        i++;
+      }
+      var atomStr = raw.substring(start, i);
+      var numVal = parseUnsignedMoneyAtom(atomStr);
+      if (numVal === null) {
+        return null;
+      }
+      tokens.push(numVal);
     }
-    total += val;
   }
 
-  if (total === 0 && !/^0([kKmM]|tr)?$/.test(clean)) {
+  if (tokens.length === 0) return null;
+
+  var pos = 0;
+  var hasError = false;
+
+  // Expr = Term { ('+' | '-') Term }
+  function parseExpr() {
+    var left = parseTerm();
+    while (!hasError && pos < tokens.length && (tokens[pos] === "+" || tokens[pos] === "-")) {
+      var op = tokens[pos++];
+      var right = parseTerm();
+      if (op === "+") {
+        left += right;
+      } else {
+        left -= right;
+      }
+    }
+    return left;
+  }
+
+  // Term = Factor { ('*' | '/') Factor }
+  function parseTerm() {
+    var left = parseFactor();
+    while (!hasError && pos < tokens.length && (tokens[pos] === "*" || tokens[pos] === "/")) {
+      var op = tokens[pos++];
+      var right = parseFactor();
+      if (op === "*") {
+        left *= right;
+      } else {
+        if (right === 0) {
+          hasError = true;
+          return 0;
+        }
+        left /= right;
+      }
+    }
+    return left;
+  }
+
+  // Factor = ('+' | '-') Factor | '(' Expr ')' | Number
+  function parseFactor() {
+    if (pos >= tokens.length) {
+      hasError = true;
+      return 0;
+    }
+
+    var tok = tokens[pos];
+    if (tok === "+") {
+      pos++;
+      return parseFactor();
+    }
+    if (tok === "-") {
+      pos++;
+      return -parseFactor();
+    }
+    if (tok === "(") {
+      pos++;
+      var inside = parseExpr();
+      if (pos >= tokens.length || tokens[pos] !== ")") {
+        hasError = true;
+        return 0;
+      }
+      pos++; // Bỏ qua dấu ')'
+      return inside;
+    }
+    if (typeof tok === "number") {
+      pos++;
+      return tok;
+    }
+
+    hasError = true;
+    return 0;
+  }
+
+  var finalVal = parseExpr();
+  if (hasError || pos !== tokens.length || !isFinite(finalVal) || isNaN(finalVal)) {
     return null;
   }
 
-  return total;
+  var rounded = Math.round(finalVal);
+  if (rounded === 0 && !/^0([kKmM]|tr)?$/.test(raw)) {
+    return null;
+  }
+
+  return rounded;
 }
 
 /**
@@ -114,7 +236,6 @@ function parseAmountExpression(exprStr) {
  */
 function isAmountToken(token) {
   if (!token) return false;
-  // Không nhận nhầm #Tag là số tiền
   if (String(token).charAt(0) === "#") return false;
   return parseAmountExpression(token) !== null;
 }
@@ -138,13 +259,13 @@ function normalizeTag(rawTag) {
 /**
  * Phân tích cú pháp cho các lệnh /c, /lcb, /clcb
  * Cú pháp chuẩn:
- *   /c <Ngân_Hàng> [#TAG] <Số_Tiền> [Ghi chú]
+ *   /c <Ngân_Hàng> [#TAG] <Số_Tiền_Hoặc_Phép_Tính> [Ghi chú]
  * Đồng thời hỗ trợ linh hoạt:
  *   - Không nhập <Ngân_Hàng> -> Mặc định là "Chung"
  *   - Không nhập [#TAG]      -> Mặc định là "#CHUNG"
  *   - [#TAG] đặt trước hoặc ngay sau <Số_Tiền> đều nhận diện được
  *
- * @param {string} argsText - Phần chuỗi sau tên lệnh (VD: "Techcombank #TRADA 50k Mua trà đá")
+ * @param {string} argsText - Phần chuỗi sau tên lệnh (VD: "Techcombank #TRADA -(35k*2+15k) Mua trà đá")
  * @returns {object} { valid, error, bank, tag, amount, rawAmount, note }
  */
 function parseTransactionArgs(argsText) {
@@ -160,7 +281,7 @@ function parseTransactionArgs(argsText) {
   var amountIndex = -1;
   var parsedAmount = null;
 
-  // Tìm vị trí của token Số Tiền đầu tiên
+  // Tìm vị trí của token Số Tiền / Biểu thức tính toán đầu tiên
   for (var i = 0; i < tokens.length; i++) {
     if (isAmountToken(tokens[i])) {
       amountIndex = i;
@@ -173,10 +294,10 @@ function parseTransactionArgs(argsText) {
     return {
       valid: false,
       error:
-        "Không tìm thấy số tiền hợp lệ.\n" +
-        "• Thu tiền: <code>50k</code> hoặc <code>+50k</code>\n" +
-        "• Chi tiền: <code>-50k</code> hoặc <code>-50.000</code>\n" +
-        "• Ví dụ: <code>/c Techcombank #TRADA -50k</code>"
+        "Không tìm thấy số tiền hoặc phép tính hợp lệ.\n" +
+        "- Thu tiền: <code>50k</code> hoặc <code>+50k</code>\n" +
+        "- Chi tiền: <code>-50k</code> hoặc <code>-(35k*2+15k)</code>\n" +
+        "- Ví dụ: <code>/c Techcombank #TRADA -50k</code>"
     };
   }
 
@@ -221,7 +342,7 @@ function parseTransactionArgs(argsText) {
 
 /**
  * Phân tích cú pháp lệnh /limit
- * Ví dụ: /limit #TRADA 200k hoặc /limit #TRADA 200.000
+ * Ví dụ: /limit #TRADA 200k hoặc /limit #TRADA 100k*3
  * @param {string} argsText
  * @returns {object} { valid, error, tag, limitAmount }
  */
@@ -349,6 +470,7 @@ function escapeHtml(str) {
 
 // Export cho môi trường Node.js Local Dev
 if (typeof module !== "undefined" && module.exports) {
+  global.parseUnsignedMoneyAtom = parseUnsignedMoneyAtom;
   global.parseSingleMoneyTerm = parseSingleMoneyTerm;
   global.parseAmountExpression = parseAmountExpression;
   global.isAmountToken = isAmountToken;
@@ -361,6 +483,7 @@ if (typeof module !== "undefined" && module.exports) {
   global.escapeHtml = escapeHtml;
 
   module.exports = {
+    parseUnsignedMoneyAtom: parseUnsignedMoneyAtom,
     parseSingleMoneyTerm: parseSingleMoneyTerm,
     parseAmountExpression: parseAmountExpression,
     isAmountToken: isAmountToken,
