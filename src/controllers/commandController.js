@@ -24,28 +24,19 @@ function handleTransactionCommand(mode, argsText, message, chatId, userLabel) {
   var parsedTx = parseTransactionArgs(argsText);
   if (!parsedTx.valid) {
     var cmdName = "/" + mode;
-    var errBox = renderBoxTable(
-      [
-        { label: "Lenh chuan", value: cmdName + " <Bank> [#TAG] <Tien> [Ghi chu]" },
-        { label: "Thu (+)", value: cmdName + " Techcombank #LUONG 15tr" },
-        { label: "Chi (-)", value: cmdName + " Techcombank #TRADA -50k" },
-        { label: "Phep tinh", value: cmdName + " MB #ANUONG -(120k+30k)/3" },
-        { label: "Mac dinh", value: "Khong ghi Bank -> Chung, Tag -> #CHUNG" }
-      ],
-      13,
-      28
-    );
+    var errMsg = [
+      "⚠️ <b>CÚ PHÁP LỆNH " + cmdName.toUpperCase() + " CHƯA ĐÚNG</b>",
+      parsedTx.error,
+      "<blockquote>" +
+        "• <b>Cấu trúc:</b> <code>" + cmdName + " &lt;Bank&gt; [#TAG] &lt;Tiền&gt; [Ghi chú]</code>\n\n" +
+        "• <b>Thu (+):</b> <code>" + cmdName + " Techcombank #LUONG 15tr</code>\n\n" +
+        "• <b>Chi (-):</b> <code>" + cmdName + " Techcombank #TRADA -50k</code>\n\n" +
+        "• <b>Phép tính:</b> <code>" + cmdName + " MB #ANUONG -(120k+30k)/3</code>\n\n" +
+        "• <b>Mặc định:</b> Không ghi Bank -> Chung, Tag -> <code>#CHUNG</code>" +
+        "</blockquote>"
+    ].join("\n\n");
 
-    return safeSendMessage(
-      chatId,
-      "⚠️ <b>CÚ PHÁP LỆNH " +
-        cmdName.toUpperCase() +
-        " CHƯA ĐÚNG</b>\n\n" +
-        parsedTx.error +
-        "\n\n<pre>" +
-        escapeHtml(errBox) +
-        "</pre>"
-    );
+    return safeSendMessage(chatId, errMsg);
   }
 
   // Tự động kiểm tra ảnh Bill từ: (1) Ảnh kèm caption, (2) Reply vào ảnh, hoặc (3) Ảnh vừa gửi trước đó
@@ -109,66 +100,40 @@ function dispatchCommand(message) {
     case "/start":
     case "/help":
       var sheetUrl = getProperty("SHEET_URL");
-      var cmdTable = renderBoxTable(
-        [
-          { label: "Open UI Mode", value: "Bang dieu khien do hoa 3 Tab" },
-          { label: "/ghi", value: "Chon nut tung buoc trong Chat" },
-          "SEPARATOR",
-          { label: "/c", value: "Ghi Thu/Chi Quy Ca Nhan" },
-          { label: "/lcb", value: "Ghi Thu/Chi Quy Phu" },
-          { label: "/clcb", value: "Ghi dong thoi ca 2 Quy" },
-          "SEPARATOR",
-          { label: "/sodu", value: "Xem so du (/balance)" },
-          { label: "/ls", value: "5 GD gan nhat (/history)" },
-          { label: "/limit", value: "Dat han muc #Tag" },
-          { label: "/undo", value: "Hoan tac GD vua nhap" },
-          { label: "/chotso", value: "Chot so giu du (/renew)" },
-          { label: "/reset", value: "Luu so & Reset du ve 0" },
-          "SEPARATOR",
-          { label: "/status", value: "Trang thai Bot & Sheet" },
-          { label: "/id", value: "Xem User ID & Chat ID" }
-        ],
-        12,
-        25
-      );
-
-      var syntaxTable = renderBoxTable(
-        [
-          { label: "Cau truc", value: "/c <Bank> [#TAG] <Tien> [Note]" },
-          { label: "Thu (+)", value: "/c Techcombank #LUONG 15tr" },
-          { label: "Chi (-)", value: "/c Techcombank #TRADA -50k" },
-          { label: "Phep tinh", value: "/c MB #ANUONG -(120k+30k)/3" },
-          { label: "Quy phu", value: "/lcb MB #CHO -200k Di cho" },
-          { label: "Ca 2 quy", value: "/clcb CASH #QUATANG -500k" },
-          { label: "Han muc", value: "/limit #TRADA 200k" },
-          { label: "Reset 0", value: "/reset (Luu su & ve 0 het)" }
-        ],
-        11,
-        29
-      );
-
-      var helpMsg =
-        "🚀 <b>SUPER FINANCE GAS BOT  |  v" +
-        escapeHtml(getAppVersion()) +
-        " (HYBRID UI)</b>\n" +
+      var helpBlocks = [
+        "🚀 <b>SUPER FINANCE BOT • v" + escapeHtml(getAppVersion()) + "</b>",
         "Xin chào <b>" +
-        escapeHtml(firstName) +
-        "</b>! Hệ thống hỗ trợ song song cả <b>📱 Giao diện Đồ họa (Open UI Mode)</b>, <b>➕ Nút chọn từng bước</b> và <b>⌨️ Dòng lệnh truyền thống</b>.\n\n" +
-        "📋 <b>1. DANH MỤC TÍNH NĂNG & LỆNH:</b>\n" +
-        "<pre>" +
-        escapeHtml(cmdTable) +
-        "</pre>\n\n" +
-        "🧮 <b>2. VÍ DỤ CÚ PHÁP NHẬP NHANH (HỖ TRỢ + - * /):</b>\n" +
-        "<pre>" +
-        escapeHtml(syntaxTable) +
-        "</pre>\n\n" +
-        "📱 <b>Mở Giao Diện UI:</b> Bấm nút <b>📱 Open UI Mode</b> trên bàn phím cố định ở dưới đáy màn hình.";
+          escapeHtml(firstName) +
+          "</b>! Bạn có thể dùng <b>3 nút bấm bên dưới</b> (<i>Mở App Thu Chi</i>, <i>Số Dư</i>, <i>Lịch sử</i>) hoặc gõ lệnh trực tiếp:",
+        "<blockquote>" +
+          "💼 <b>1. GHI THU / CHI</b>\n\n" +
+          "• <code>/c</code> : Ghi Quỹ Cá Nhân\n\n" +
+          "• <code>/lcb</code> : Ghi Quỹ Phụ\n\n" +
+          "• <code>/clcb</code> : Ghi đồng thời cả 2 Quỹ\n\n" +
+          "• <code>/ghi</code> : Chọn nút từng bước trong Chat" +
+          "</blockquote>",
+        "<blockquote>" +
+          "📊 <b>2. TRA CỨU & QUẢN LÝ SỔ</b>\n\n" +
+          "• <code>/sodu</code> : Xem báo cáo số dư (/balance)\n\n" +
+          "• <code>/ls</code> : Xem 5 giao dịch gần nhất (/history)\n\n" +
+          "• <code>/limit</code> : Đặt hạn mức #Tag\n\n" +
+          "• <code>/undo</code> : Hoàn tác GD vừa nhập\n\n" +
+          "• <code>/chotso</code> • <code>/reset</code> : Chốt sổ / Reset về 0" +
+          "</blockquote>",
+        "<blockquote>" +
+          "🧮 <b>3. VÍ DỤ CÚ PHÁP NHẬP NHANH (HỖ TRỢ + - * /)</b>\n\n" +
+          "• <b>Cấu trúc:</b> <code>/c &lt;Bank&gt; [#TAG] &lt;Tiền&gt; [Note]</code>\n\n" +
+          "• <b>Thu (+):</b> <code>/c Techcombank #LUONG 15tr</code>\n\n" +
+          "• <b>Chi (-):</b> <code>/c Techcombank #TRADA -50k</code>\n\n" +
+          "• <b>Phép tính:</b> <code>/c MB #ANUONG -(120k+30k)/3</code>" +
+          "</blockquote>"
+      ];
 
       if (sheetUrl) {
-        helpMsg += "\n\n📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở File Google Sheets của Bot</a>";
+        helpBlocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
       }
 
-      return safeSendMessage(chatId, helpMsg, {
+      return safeSendMessage(chatId, helpBlocks.join("\n\n"), {
         reply_markup: buildMainReplyKeyboard(userId),
         disable_web_page_preview: true
       });
@@ -185,7 +150,8 @@ function dispatchCommand(message) {
     case "/undo":
       var undoText = executeUndoTransaction(argsText, null);
       return safeSendMessage(chatId, undoText, {
-        reply_markup: buildMainReplyKeyboard(userId)
+        reply_markup: buildMainReplyKeyboard(userId),
+        disable_web_page_preview: true
       });
 
     case "/sodu":
@@ -207,7 +173,8 @@ function dispatchCommand(message) {
     case "/limit":
       var limitRes = handleSetLimitCommand(argsText, userLabel);
       return safeSendMessage(chatId, limitRes, {
-        reply_markup: buildMainReplyKeyboard(userId)
+        reply_markup: buildMainReplyKeyboard(userId),
+        disable_web_page_preview: true
       });
 
     case "/chotso":
@@ -215,7 +182,8 @@ function dispatchCommand(message) {
       if (argsText && (argsText.toLowerCase() === "yes" || argsText.toLowerCase() === "confirm")) {
         var doneText = executeRenewPeriod(userLabel);
         return safeSendMessage(chatId, doneText, {
-          reply_markup: buildMainReplyKeyboard(userId)
+          reply_markup: buildMainReplyKeyboard(userId),
+          disable_web_page_preview: true
         });
       }
       var previewObj = buildRenewPreview();
@@ -233,9 +201,9 @@ function dispatchCommand(message) {
     case "/ping":
       return safeSendMessage(
         chatId,
-        "🏓 <b>Pong!</b> Bot <b>v" +
+        "🏓 <b>Pong!</b>\n\nBot <b>v" +
           escapeHtml(getAppVersion()) +
-          "</b> đang hoạt động ổn định.\n<i>Chế độ Anti-Reply-Storm & Hybrid UI: Đang bật</i>",
+          "</b> đang hoạt động ổn định.\n\n<i>Chế độ Anti-Reply-Storm & Z Fold UI: Đang bật</i>",
         { reply_markup: buildMainReplyKeyboard(userId) }
       );
 
@@ -245,7 +213,7 @@ function dispatchCommand(message) {
         "🆔 <b>THÔNG TIN ĐỊNH DANH CỦA BẠN:</b>\n\n" +
           "• <b>User ID:</b> <code>" +
           userId +
-          "</code>\n" +
+          "</code>\n\n" +
           "• <b>Chat ID:</b> <code>" +
           chatId +
           "</code>",
@@ -255,27 +223,21 @@ function dispatchCommand(message) {
     case "/status":
       var cfg = getConfig();
       var driveSt = checkDrivePermissionStatus();
-      var stBox = renderBoxTable(
-        [
-          { label: "Phien ban", value: "v" + cfg.appVersion + " (Hybrid UI)" },
-          { label: "Bot", value: "@" + cfg.botUsername },
-          { label: "Allowed IDs", value: cfg.adminIds },
-          { label: "Cau chi", value: cfg.emergencyStop ? "DANG KHOA" : "Hoat dong" },
-          { label: "Database", value: cfg.sheetId ? "Da ket noi" : "Chua tao" },
-          { label: "Google Drive", value: driveSt.authorized ? "Da cap quyen" : "Chua cap quyen" }
-        ],
-        13,
-        24
-      );
-      var stMsg =
-        "🛡️ <b>TRẠNG THÁI HỆ THỐNG BOT</b>\n\n" +
-        "<pre>" +
-        escapeHtml(stBox) +
-        "</pre>";
+      var stBlocks = [
+        "🛡️ <b>TRẠNG THÁI HỆ THỐNG BOT</b>",
+        "<blockquote>" +
+          "• <b>Phiên bản:</b> v" + escapeHtml(cfg.appVersion) + " (Z Fold UI)\n\n" +
+          "• <b>Bot:</b> @" + escapeHtml(cfg.botUsername) + "\n\n" +
+          "• <b>Allowed IDs:</b> <code>" + escapeHtml(cfg.adminIds) + "</code>\n\n" +
+          "• <b>Cầu chì:</b> " + (cfg.emergencyStop ? "🔴 ĐANG KHÓA" : "🟢 Hoạt động") + "\n\n" +
+          "• <b>Database:</b> " + (cfg.sheetId ? "Đã kết nối" : "Chưa tạo") + "\n\n" +
+          "• <b>Google Drive:</b> " + (driveSt.authorized ? "Đã cấp quyền" : "Chưa cấp quyền") +
+          "</blockquote>"
+      ];
       if (cfg.sheetUrl) {
-        stMsg += "\n\n📂 <a href=\"" + escapeHtml(cfg.sheetUrl) + "\">Mở File Google Sheets</a>";
+        stBlocks.push("📊 <a href=\"" + escapeHtml(cfg.sheetUrl) + "\">Mở bảng Google Sheets</a>");
       }
-      return safeSendMessage(chatId, stMsg, {
+      return safeSendMessage(chatId, stBlocks.join("\n\n"), {
         reply_markup: buildMainReplyKeyboard(userId),
         disable_web_page_preview: true
       });

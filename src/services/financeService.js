@@ -57,7 +57,7 @@ function calculateSheetStats(rows) {
 }
 
 /**
- * Tạo dòng thông báo kiểm tra Hạn mức (/limit) cho một #Tag
+ * Tạo dòng thông báo kiểm tra Hạn mức (/limit) cho một #Tag (Tối giản, dịu mắt cho Z Fold)
  * @param {string} tag
  * @param {number} spentAmount
  * @returns {string}
@@ -74,36 +74,37 @@ function buildLimitAlertText(tag, spentAmount) {
   var percent = Math.round((spent / limitVal) * 100);
   var remain = limitVal - spent;
 
-  var statusLabel = "🟢 An toan";
+  var statusLabel = "An toàn";
   if (percent >= 100) {
-    statusLabel = "🔴 VUOT HAN MUC";
+    statusLabel = "Vượt hạn mức";
   } else if (percent >= 80) {
-    statusLabel = "🟡 Sap cham tran";
+    statusLabel = "Sắp chạm trần";
   }
 
-  var alertBox = renderBoxTable(
-    [
-      { label: "Han muc", value: formatCurrency(limitVal, false) },
-      { label: "Da chi", value: formatCurrency(spent, false) + " (" + percent + "%)" },
-      { label: "Con lai", value: formatCurrency(remain, false) },
-      { label: "Trang thai", value: statusLabel }
-    ],
-    13,
-    23
-  );
-
   return (
-    "\n\n🎯 <b>THEO DÕI HẠN MỨC " +
+    "<blockquote>" +
+    "🎯 <b>Hạn mức <code>" +
     escapeHtml(normTag) +
-    "</b>\n\n" +
-    "<pre>" +
-    escapeHtml(alertBox) +
-    "</pre>"
+    "</code>:</b> " +
+    escapeHtml(formatCurrency(limitVal, false)) +
+    "\n\n" +
+    "• Đã chi: " +
+    escapeHtml(formatCurrency(spent, false)) +
+    " (" +
+    percent +
+    "%)\n\n" +
+    "• Còn lại: <b>" +
+    escapeHtml(formatCurrency(remain, false)) +
+    "</b> <i>(" +
+    statusLabel +
+    ")</i>" +
+    "</blockquote>"
   );
 }
 
 /**
  * Ghi nhận giao dịch mới cho /c, /lcb hoặc /clcb
+ * Giao diện tối ưu cho màn hình hẹp Samsung Galaxy Z Fold (cách 1 dòng trắng giữa mỗi dòng)
  * @param {string} mode - "c" | "lcb" | "clcb"
  * @param {object} parsedTx - Kết quả từ parseTransactionArgs()
  * @param {string} userLabel - Tên & ID người nhập
@@ -140,53 +141,61 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
   };
 
   var isIncome = parsedTx.amount >= 0;
-  var typeLabel = isIncome ? "🟢 THU VAO (+)" : "🔴 CHI RA (-)";
   var amountFormatted = formatCurrency(parsedTx.amount, true);
+  var flowLine = isIncome
+    ? "🟢 <b>Thu vào:</b> <code>" + escapeHtml(amountFormatted) + "</code>"
+    : "🔴 <b>Chi ra:</b> <code>" + escapeHtml(amountFormatted) + "</code>";
 
   var titleHeader = "";
-  var tableRows = [];
+  var balanceQuote = "";
   var limitSection = "";
 
   if (mode === "c") {
     appendTransactionRow(SHEET_NAMES.PERSONAL, txRecord);
     var cStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
 
-    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH  |  💼 QUỸ CÁ NHÂN (/c)</b>";
-    tableRows = [
-      { label: "Ma GD", value: txId },
-      { label: "Loai GD", value: typeLabel },
-      "SEPARATOR",
-      { label: "Ngan hang", value: parsedTx.bank },
-      { label: "Phan loai", value: parsedTx.tag },
-      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
-      { label: "So tien", value: amountFormatted },
-      { label: "Ghi chu", value: parsedTx.note },
-      "SEPARATOR",
-      { label: "Du " + parsedTx.tag, value: formatCurrency(cStats.byTag[parsedTx.tag] || 0, false) },
-      { label: "Du " + parsedTx.bank, value: formatCurrency(cStats.byBank[parsedTx.bank] || 0, false) },
-      { label: "TONG QUY", value: formatCurrency(cStats.totalBalance, false) }
-    ];
+    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH (/c)</b>";
+    balanceQuote =
+      "<blockquote>" +
+      "💰 <b>SỐ DƯ SAU GIAO DỊCH</b>\n\n" +
+      "• Dư <code>" +
+      escapeHtml(parsedTx.tag) +
+      "</code>: <b>" +
+      escapeHtml(formatCurrency(cStats.byTag[parsedTx.tag] || 0, false)) +
+      "</b>\n\n" +
+      "• Dư " +
+      escapeHtml(parsedTx.bank) +
+      ": <b>" +
+      escapeHtml(formatCurrency(cStats.byBank[parsedTx.bank] || 0, false)) +
+      "</b>\n\n" +
+      "💎 <b>Tổng Quỹ Cá Nhân:</b> <code>" +
+      escapeHtml(formatCurrency(cStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>";
 
     limitSection = buildLimitAlertText(parsedTx.tag, cStats.spentByTag[parsedTx.tag] || 0);
   } else if (mode === "lcb") {
     appendTransactionRow(SHEET_NAMES.SUB_FUND, txRecord);
     var lcbStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.SUB_FUND));
 
-    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH  |  🏦 QUỸ PHỤ (/lcb)</b>";
-    tableRows = [
-      { label: "Ma GD", value: txId },
-      { label: "Loai GD", value: typeLabel },
-      "SEPARATOR",
-      { label: "Ngan hang", value: parsedTx.bank },
-      { label: "Phan loai", value: parsedTx.tag },
-      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
-      { label: "So tien", value: amountFormatted },
-      { label: "Ghi chu", value: parsedTx.note },
-      "SEPARATOR",
-      { label: "Du " + parsedTx.tag, value: formatCurrency(lcbStats.byTag[parsedTx.tag] || 0, false) },
-      { label: "Du " + parsedTx.bank, value: formatCurrency(lcbStats.byBank[parsedTx.bank] || 0, false) },
-      { label: "TONG QUY PHU", value: formatCurrency(lcbStats.totalBalance, false) }
-    ];
+    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH (/lcb)</b>";
+    balanceQuote =
+      "<blockquote>" +
+      "💰 <b>SỐ DƯ SAU GIAO DỊCH</b>\n\n" +
+      "• Dư <code>" +
+      escapeHtml(parsedTx.tag) +
+      "</code>: <b>" +
+      escapeHtml(formatCurrency(lcbStats.byTag[parsedTx.tag] || 0, false)) +
+      "</b>\n\n" +
+      "• Dư " +
+      escapeHtml(parsedTx.bank) +
+      ": <b>" +
+      escapeHtml(formatCurrency(lcbStats.byBank[parsedTx.bank] || 0, false)) +
+      "</b>\n\n" +
+      "💎 <b>Tổng Quỹ Phụ:</b> <code>" +
+      escapeHtml(formatCurrency(lcbStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>";
 
     limitSection = buildLimitAlertText(parsedTx.tag, lcbStats.spentByTag[parsedTx.tag] || 0);
   } else if (mode === "clcb") {
@@ -196,53 +205,60 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
     var bothPersonalStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
     var bothSubStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.SUB_FUND));
 
-    titleHeader = "✅ <b>GHI ĐỒNG THỜI 2 QUỸ  |  ⚡ (/clcb)</b>";
-    tableRows = [
-      { label: "Ma GD", value: txId },
-      { label: "Loai GD", value: typeLabel },
-      "SEPARATOR",
-      { label: "Ngan hang", value: parsedTx.bank },
-      { label: "Phan loai", value: parsedTx.tag },
-      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
-      { label: "So tien", value: amountFormatted },
-      { label: "Ghi chu", value: parsedTx.note },
-      "SEPARATOR",
-      { label: "Du " + parsedTx.tag + " (/c)", value: formatCurrency(bothPersonalStats.byTag[parsedTx.tag] || 0, false) },
-      { label: "Du " + parsedTx.tag + " (/lcb)", value: formatCurrency(bothSubStats.byTag[parsedTx.tag] || 0, false) },
-      "SEPARATOR",
-      { label: "QUY CA NHAN", value: formatCurrency(bothPersonalStats.totalBalance, false) },
-      { label: "QUY PHU", value: formatCurrency(bothSubStats.totalBalance, false) }
-    ];
+    titleHeader = "✅ <b>GHI ĐỒNG THỜI 2 QUỸ (/clcb)</b>";
+    balanceQuote =
+      "<blockquote>" +
+      "💰 <b>SỐ DƯ SAU GIAO DỊCH</b>\n\n" +
+      "• Dư <code>" +
+      escapeHtml(parsedTx.tag) +
+      "</code> (/c): <b>" +
+      escapeHtml(formatCurrency(bothPersonalStats.byTag[parsedTx.tag] || 0, false)) +
+      "</b>\n\n" +
+      "• Dư <code>" +
+      escapeHtml(parsedTx.tag) +
+      "</code> (/lcb): <b>" +
+      escapeHtml(formatCurrency(bothSubStats.byTag[parsedTx.tag] || 0, false)) +
+      "</b>\n\n" +
+      "📘 <b>Tổng Quỹ Cá Nhân:</b> <code>" +
+      escapeHtml(formatCurrency(bothPersonalStats.totalBalance, false)) +
+      "</code>\n\n" +
+      "📙 <b>Tổng Quỹ Phụ:</b> <code>" +
+      escapeHtml(formatCurrency(bothSubStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>";
 
     limitSection = buildLimitAlertText(parsedTx.tag, bothPersonalStats.spentByTag[parsedTx.tag] || 0);
   }
 
-  var boxTableStr = renderBoxTable(tableRows, 15, 22);
-
-  var messageParts = [
+  // Mỗi dòng phản hồi cách nhau 1 dòng trắng (\n\n) để thoáng mắt trên Samsung Z Fold
+  var messageBlocks = [
     titleHeader,
-    "",
-    "<pre>" + escapeHtml(boxTableStr) + "</pre>"
+    flowLine,
+    "🧮 <b>Phép tính:</b> <code>" + escapeHtml(String(parsedTx.rawAmount || parsedTx.amount)) + "</code>",
+    "🏦 <b>Ngân hàng:</b> " + escapeHtml(parsedTx.bank),
+    "🏷️ <b>Phân loại:</b> <code>" + escapeHtml(parsedTx.tag) + "</code>",
+    "📝 <b>Ghi chú:</b> " + escapeHtml(parsedTx.note),
+    "🆔 <b>Mã GD:</b> <code>" + escapeHtml(txId) + "</code>",
+    balanceQuote
   ];
 
   if (limitSection) {
-    messageParts.push(limitSection);
+    messageBlocks.push(limitSection);
   }
 
+  // Tách riêng mục Ảnh Hóa Đơn (Bill) và Mở bảng Google Sheets cách nhau 1 dòng trắng
   if (billUrl) {
     var linkLabel =
       billUrl.indexOf("drive.google.com") > -1
         ? "🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive"
         : "🖼 Mở xem file ảnh hóa đơn (Bill)";
-    messageParts.push(
-      "",
+    messageBlocks.push(
       "📸 <b>ẢNH HÓA ĐƠN (BILL):</b>\n<a href=\"" + escapeHtml(billUrl) + "\">" + linkLabel + "</a>"
     );
   }
 
   if (hasPhoto && billError) {
-    messageParts.push(
-      "",
+    messageBlocks.push(
       "⚠️ <i>Lưu ý Google Drive: " +
         escapeHtml(billError) +
         " (Mở GAS Editor -> Chọn hàm ActivateBot hoặc GrantAllPermissions -> Bấm Run để cấp quyền Drive).</i>"
@@ -251,10 +267,7 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
 
   var sheetUrl = getProperty("SHEET_URL");
   if (sheetUrl) {
-    messageParts.push(
-      "",
-      "📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>"
-    );
+    messageBlocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
   }
 
   var replyMarkup = {
@@ -269,7 +282,7 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
   };
 
   return {
-    text: messageParts.join("\n"),
+    text: messageBlocks.join("\n\n"),
     replyMarkup: replyMarkup
   };
 }
@@ -328,38 +341,40 @@ function executeUndoTransaction(targetMode, specificTxId) {
 
   var scopeName =
     deletedPersonal && deletedSub
-      ? "Ca 2 Quy (/clcb)"
+      ? "Cả 2 Quỹ (/clcb)"
       : deletedPersonal
-      ? "Quy Ca Nhan (/c)"
-      : "Quy Phu (/lcb)";
+      ? "Quỹ Cá Nhân (/c)"
+      : "Quỹ Phụ (/lcb)";
 
-  var box = renderBoxTable(
-    [
-      { label: "Ma GD xoa", value: sample.txId || "N/A" },
-      { label: "Pham vi", value: scopeName },
-      "SEPARATOR",
-      { label: "Ngan hang", value: sample.bank },
-      { label: "Phan loai", value: sample.tag },
-      { label: "So tien xoa", value: formatCurrency(sample.amount, true) },
-      { label: "Ghi chu", value: sample.note },
-      "SEPARATOR",
-      { label: "Quy Ca Nhan", value: formatCurrency(cStats.totalBalance, false) },
-      { label: "Quy Phu", value: formatCurrency(lcbStats.totalBalance, false) }
-    ],
-    15,
-    22
-  );
+  var blocks = [
+    "↩️ <b>ĐÃ HOÀN TÁC GIAO DỊCH</b>",
+    "🆔 <b>Mã GD xóa:</b> <code>" + escapeHtml(sample.txId || "N/A") + "</code>",
+    "📂 <b>Phạm vi:</b> " + escapeHtml(scopeName),
+    "🏦 <b>Ngân hàng:</b> " + escapeHtml(sample.bank) + "  •  <code>" + escapeHtml(sample.tag) + "</code>",
+    "💰 <b>Số tiền xóa:</b> <code>" + escapeHtml(formatCurrency(sample.amount, true)) + "</code>",
+    "📝 <b>Ghi chú:</b> " + escapeHtml(sample.note),
+    "<blockquote>" +
+      "💎 <b>SỐ DƯ CẬP NHẬT</b>\n\n" +
+      "📘 <b>Quỹ Cá Nhân:</b> <code>" +
+      escapeHtml(formatCurrency(cStats.totalBalance, false)) +
+      "</code>\n\n" +
+      "📙 <b>Quỹ Phụ:</b> <code>" +
+      escapeHtml(formatCurrency(lcbStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>"
+  ];
 
-  return (
-    "↩️ <b>ĐÃ HOÀN TÁC (XÓA) GIAO DỊCH THÀNH CÔNG</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>"
-  );
+  var sheetUrl = getProperty("SHEET_URL");
+  if (sheetUrl) {
+    blocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
+  }
+
+  return blocks.join("\n\n");
 }
 
 /**
  * Tạo báo cáo Số dư tổng hợp (/sodu hoặc /balance)
+ * Tối ưu hiển thị thoáng dòng cho Samsung Galaxy Z Fold
  * @returns {string}
  */
 function buildBalanceReport() {
@@ -370,74 +385,72 @@ function buildBalanceReport() {
   var sStats = calculateSheetStats(subRows);
   var limitsMap = getAllTagLimits();
 
-  var overviewBox = renderBoxTable(
-    [
-      { label: "QUY CA NHAN", value: formatCurrency(pStats.totalBalance, false) },
-      { label: "QUY PHU", value: formatCurrency(sStats.totalBalance, false) }
-    ],
-    15,
-    22
-  );
+  var overviewBlock =
+    "<blockquote>" +
+    "💰 <b>1. TỔNG QUAN HAI QUỸ</b>\n\n" +
+    "📘 <b>Quỹ Cá Nhân (/c):</b> <code>" +
+    escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+    "</code>\n\n" +
+    "📙 <b>Quỹ Phụ (/lcb):</b> <code>" +
+    escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+    "</code>" +
+    "</blockquote>";
 
-  var bankRows = [];
+  var bankLines = ["🏦 <b>2. THEO NGÂN HÀNG (QUỸ CÁ NHÂN)</b>"];
   var bankKeys = Object.keys(pStats.byBank);
   if (bankKeys.length === 0) {
-    bankRows.push({ label: "Mac dinh", value: "0 đ" });
+    bankLines.push("• <b>Mặc định:</b> 0 đ");
   } else {
     for (var i = 0; i < bankKeys.length; i++) {
       var bName = bankKeys[i];
-      bankRows.push({
-        label: bName,
-        value: formatCurrency(pStats.byBank[bName], false)
-      });
+      bankLines.push(
+        "• <b>" +
+          escapeHtml(bName) +
+          ":</b> " +
+          escapeHtml(formatCurrency(pStats.byBank[bName], false))
+      );
     }
   }
-  var bankBox = renderBoxTable(bankRows, 15, 22);
+  var bankBlock = "<blockquote>" + bankLines.join("\n\n") + "</blockquote>";
 
-  var tagRows = [];
+  var tagLines = ["🏷️ <b>3. THEO PHÂN LOẠI (#TAG)</b>"];
   var tagKeys = Object.keys(pStats.byTag);
   if (tagKeys.length === 0) {
-    tagRows.push({ label: "Mac dinh", value: "0 đ" });
+    tagLines.push("• <b>Mặc định:</b> 0 đ");
   } else {
     for (var j = 0; j < tagKeys.length; j++) {
       var tName = tagKeys[j];
       var tBal = formatCurrency(pStats.byTag[tName], false);
+      var lineStr = "• <code>" + escapeHtml(tName) + "</code>: <b>" + escapeHtml(tBal) + "</b>";
       if (limitsMap[tName]) {
         var spent = pStats.spentByTag[tName] || 0;
-        var pct = Math.round((spent / limitsMap[tName]) * 100);
-        tBal += " (" + pct + "% HM)";
+        var remain = limitsMap[tName] - spent;
+        lineStr +=
+          "\n  <i>(Hạn mức còn: " + escapeHtml(formatCurrency(remain, false)) + ")</i>";
       }
-      tagRows.push({
-        label: tName,
-        value: tBal
-      });
+      tagLines.push(lineStr);
     }
   }
-  var tagBox = renderBoxTable(tagRows, 15, 22);
+  var tagBlock = "<blockquote>" + tagLines.join("\n\n") + "</blockquote>";
 
   var parts = [
-    "📊 <b>BÁO CÁO SỐ DƯ TÀI CHÍNH (/sodu)</b>",
-    "",
-    "💰 <b>1. TỔNG QUAN HAI QUỸ:</b>",
-    "<pre>" + escapeHtml(overviewBox) + "</pre>",
-    "",
-    "🏦 <b>2. SỐ DƯ THEO NGÂN HÀNG (QUỸ CÁ NHÂN):</b>",
-    "<pre>" + escapeHtml(bankBox) + "</pre>",
-    "",
-    "🏷️ <b>3. SỐ DƯ THEO PHÂN LOẠI #TAG:</b>",
-    "<pre>" + escapeHtml(tagBox) + "</pre>"
+    "📊 <b>BÁO CÁO SỐ DƯ TÀI CHÍNH</b>",
+    overviewBlock,
+    bankBlock,
+    tagBlock
   ];
 
   var sheetUrl = getProperty("SHEET_URL");
   if (sheetUrl) {
-    parts.push("", "📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets chi tiết</a>");
+    parts.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
   }
 
-  return parts.join("\n");
+  return parts.join("\n\n");
 }
 
 /**
  * Xem lại 5 giao dịch gần nhất (/ls hoặc /history)
+ * Tối ưu hiển thị thoáng dòng cho Samsung Galaxy Z Fold
  * @param {number} [limitCount=5]
  * @returns {string}
  */
@@ -449,57 +462,70 @@ function buildRecentHistoryReport(limitCount) {
   var recentP = pRows.slice(-count).reverse();
   var recentS = sRows.slice(-count).reverse();
 
-  var parts = ["📜 <b>LỊCH SỬ " + count + " GIAO DỊCH GẦN NHẤT (/ls)</b>"];
+  var parts = ["📜 <b>" + count + " GIAO DỊCH GẦN NHẤT</b>"];
 
-  parts.push("", "--------------------------------", "📘 <b>1. QUỸ CÁ NHÂN (/c):</b>");
+  parts.push("📘 <b>1. QUỸ CÁ NHÂN (/c)</b>");
   if (recentP.length === 0) {
     parts.push("<i>(Chưa có giao dịch nào)</i>");
   } else {
     for (var i = 0; i < recentP.length; i++) {
       var item = recentP[i];
-      var box = renderBoxTable(
-        [
-          { label: "Thoi gian", value: item.time },
-          { label: "Ngan hang", value: item.bank + " | " + item.tag },
-          { label: "So tien", value: formatCurrency(item.amount, true) },
-          { label: "Ghi chu", value: item.note }
-        ],
-        13,
-        24
-      );
-      var itemText = "\n<pre>" + escapeHtml(box) + "</pre>";
+      var iconP = Number(item.amount) >= 0 ? "🟢" : "🔴";
+      var linesP = [
+        iconP +
+          " <b><code>" +
+          escapeHtml(formatCurrency(item.amount, true)) +
+          "</code></b>  •  <code>" +
+          escapeHtml(item.tag) +
+          "</code>",
+        "🏦 " + escapeHtml(item.bank) + "  •  🕒 " + escapeHtml(item.time),
+        "📝 " + escapeHtml(item.note)
+      ];
       if (item.billUrl) {
-        itemText += "\n🖼 <a href=\"" + escapeHtml(item.billUrl) + "\">Xem ảnh Bill (" + escapeHtml(item.txId) + ")</a>";
+        var billLabelP =
+          item.billUrl.indexOf("drive.google.com") > -1
+            ? "🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive"
+            : "🖼 Mở xem ảnh hóa đơn (Bill)";
+        linesP.push("<a href=\"" + escapeHtml(item.billUrl) + "\">" + billLabelP + "</a>");
       }
-      parts.push(itemText);
+      parts.push("<blockquote>" + linesP.join("\n\n") + "</blockquote>");
     }
   }
 
-  parts.push("", "--------------------------------", "📙 <b>2. QUỸ PHỤ (/lcb):</b>");
+  parts.push("📙 <b>2. QUỸ PHỤ (/lcb)</b>");
   if (recentS.length === 0) {
     parts.push("<i>(Chưa có giao dịch nào)</i>");
   } else {
     for (var j = 0; j < recentS.length; j++) {
       var sItem = recentS[j];
-      var sBox = renderBoxTable(
-        [
-          { label: "Thoi gian", value: sItem.time },
-          { label: "Ngan hang", value: sItem.bank + " | " + sItem.tag },
-          { label: "So tien", value: formatCurrency(sItem.amount, true) },
-          { label: "Ghi chu", value: sItem.note }
-        ],
-        13,
-        24
-      );
-      var sItemText = "\n<pre>" + escapeHtml(sBox) + "</pre>";
+      var iconS = Number(sItem.amount) >= 0 ? "🟢" : "🔴";
+      var linesS = [
+        iconS +
+          " <b><code>" +
+          escapeHtml(formatCurrency(sItem.amount, true)) +
+          "</code></b>  •  <code>" +
+          escapeHtml(sItem.tag) +
+          "</code>",
+        "🏦 " + escapeHtml(sItem.bank) + "  •  🕒 " + escapeHtml(sItem.time),
+        "📝 " + escapeHtml(sItem.note)
+      ];
       if (sItem.billUrl) {
-        sItemText += "\n🖼 <a href=\"" + escapeHtml(sItem.billUrl) + "\">Xem ảnh Bill (" + escapeHtml(sItem.txId) + ")</a>";
+        var billLabelS =
+          sItem.billUrl.indexOf("drive.google.com") > -1
+            ? "🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive"
+            : "🖼 Mở xem ảnh hóa đơn (Bill)";
+        linesS.push("<a href=\"" + escapeHtml(sItem.billUrl) + "\">" + billLabelS + "</a>");
       }
-      parts.push(sItemText);
+      parts.push("<blockquote>" + linesS.join("\n\n") + "</blockquote>");
     }
   }
 
-  return parts.join("\n");
+  var sheetUrl = getProperty("SHEET_URL");
+  if (sheetUrl) {
+    parts.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
+  }
+
+  return parts.join("\n\n");
 }
 
 /**
@@ -519,25 +545,30 @@ function handleSetLimitCommand(argsText, userLabel) {
   var pStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
   var currentSpent = pStats.spentByTag[parsed.tag] || 0;
   var percent = Math.round((currentSpent / parsed.limitAmount) * 100);
+  var remain = parsed.limitAmount - currentSpent;
 
-  var box = renderBoxTable(
-    [
-      { label: "Phan loai", value: parsed.tag },
-      { label: "Han muc moi", value: formatCurrency(parsed.limitAmount, false) },
-      "SEPARATOR",
-      { label: "Da chi ky nay", value: formatCurrency(currentSpent, false) + " (" + percent + "%)" },
-      { label: "Con duoc tieu", value: formatCurrency(parsed.limitAmount - currentSpent, false) }
-    ],
-    15,
-    22
-  );
+  var blocks = [
+    "🎯 <b>ĐÃ CẬP NHẬT HẠN MỨC CHI TIÊU (/limit)</b>",
+    "🏷️ <b>Phân loại:</b> <code>" + escapeHtml(parsed.tag) + "</code>",
+    "💰 <b>Hạn mức mới:</b> <code>" + escapeHtml(formatCurrency(parsed.limitAmount, false)) + "</code>",
+    "<blockquote>" +
+      "• Đã chi kỳ này: " +
+      escapeHtml(formatCurrency(currentSpent, false)) +
+      " (" +
+      percent +
+      "%)\n\n" +
+      "• Còn lại: <b>" +
+      escapeHtml(formatCurrency(remain, false)) +
+      "</b>" +
+      "</blockquote>"
+  ];
 
-  return (
-    "🎯 <b>ĐÃ CẬP NHẬT HẠN MỨC CHI TIÊU (/limit)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>"
-  );
+  var sheetUrl = getProperty("SHEET_URL");
+  if (sheetUrl) {
+    blocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
+  }
+
+  return blocks.join("\n\n");
 }
 
 /**
@@ -551,27 +582,26 @@ function buildRenewPreview() {
   var pStats = calculateSheetStats(pRows);
   var sStats = calculateSheetStats(sRows);
 
-  var box = renderBoxTable(
-    [
-      { label: "Dong Quy Chinh", value: pRows.length + " giao dich" },
-      { label: "Dong Quy Phu", value: sRows.length + " giao dich" },
-      "SEPARATOR",
-      { label: "Quy Ca Nhan", value: formatCurrency(pStats.totalBalance, false) },
-      { label: "Quy Phu", value: formatCurrency(sStats.totalBalance, false) }
-    ],
-    15,
-    22
-  );
-
-  var text =
-    "📅 <b>XÁC NHẬN CHỐT SỔ CUỐI KỲ (/chotso)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>\n\n" +
-    "<b>Khi xác nhận Chốt sổ (/chotso):</b>\n" +
-    "1️⃣ Toàn bộ các dòng giao dịch kỳ này sẽ được chuyển sang bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "2️⃣ Các dòng giao dịch lẻ được gom gọn thành dòng <b>Số dư đầu kỳ</b> mới cho từng Ngân hàng & #Tag.\n" +
-    "<i>(Nếu muốn lưu sổ và đưa toàn bộ số dư về 0, hãy dùng lệnh /reset)</i>";
+  var text = [
+    "📅 <b>XÁC NHẬN CHỐT SỔ CUỐI KỲ (/chotso)</b>",
+    "<blockquote>" +
+      "📘 <b>Quỹ Cá Nhân (/c):</b> " +
+      pRows.length +
+      " giao dịch\n\n" +
+      "👉 Số dư: <b><code>" +
+      escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+      "</code></b>\n\n" +
+      "📙 <b>Quỹ Phụ (/lcb):</b> " +
+      sRows.length +
+      " giao dịch\n\n" +
+      "👉 Số dư: <b><code>" +
+      escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+      "</code></b>" +
+      "</blockquote>",
+    "1️⃣ Toàn bộ các dòng giao dịch kỳ này sẽ được chuyển sang bảng <b>Lịch Sử Chốt Sổ</b>.",
+    "2️⃣ Các dòng giao dịch lẻ được gom gọn thành dòng <b>Số dư đầu kỳ</b> mới cho từng Ngân hàng & #Tag.",
+    "<i>(Nếu muốn lưu sổ và đưa toàn bộ số dư về 0, hãy dùng lệnh /reset)</i>"
+  ].join("\n\n");
 
   var replyMarkup = {
     inline_keyboard: [
@@ -655,28 +685,27 @@ function executeRenewPeriod(userLabel) {
   resetSheetWithOpeningBalances(SHEET_NAMES.PERSONAL, newPersonalOpening);
   resetSheetWithOpeningBalances(SHEET_NAMES.SUB_FUND, newSubOpening);
 
-  var box = renderBoxTable(
-    [
-      { label: "Thoi gian", value: nowStr },
-      { label: "Da chuyen su", value: archivedCount + " dong giao dich" },
-      "SEPARATOR",
-      { label: "Du dau ky /c", value: formatCurrency(pStats.totalBalance, false) },
-      { label: "Du dau ky /lcb", value: formatCurrency(sStats.totalBalance, false) }
-    ],
-    15,
-    22
-  );
+  var blocks = [
+    "✅ <b>ĐÃ CHỐT SỔ SANG KỲ MỚI THÀNH CÔNG</b>",
+    "🕒 <b>Thời gian:</b> " + escapeHtml(nowStr),
+    "📦 <b>Đã chuyển sổ:</b> <b>" + archivedCount + " dòng giao dịch</b> sang bảng <b>Lịch Sử Chốt Sổ</b>",
+    "<blockquote>" +
+      "🌱 <b>SỐ DƯ ĐẦU KỲ MỚI</b>\n\n" +
+      "📘 <b>Quỹ Cá Nhân (/c):</b> <code>" +
+      escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+      "</code>\n\n" +
+      "📙 <b>Quỹ Phụ (/lcb):</b> <code>" +
+      escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>"
+  ];
 
-  return (
-    "✅ <b>ĐÃ CHỐT SỔ SANG KỲ MỚI THÀNH CÔNG</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>\n\n" +
-    "📦 Toàn bộ <b>" +
-    archivedCount +
-    " giao dịch chi tiết</b> (kèm Ghi chú & Link Bill) đã được chuyển nguyên vẹn sang bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "🌱 Đã khởi tạo dòng <b>Số dư đầu kỳ</b> mới cho kỳ tiếp theo."
-  );
+  var sheetUrl = getProperty("SHEET_URL");
+  if (sheetUrl) {
+    blocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
+  }
+
+  return blocks.join("\n\n");
 }
 
 /**
@@ -707,38 +736,36 @@ function executeResetAllToZero(userLabel) {
   resetSheetWithOpeningBalances(SHEET_NAMES.PERSONAL, []);
   resetSheetWithOpeningBalances(SHEET_NAMES.SUB_FUND, []);
 
-  var box = renderBoxTable(
-    [
-      { label: "Thoi gian", value: nowStr },
-      { label: "GD chuyen su", value: archivedCount + " dong (" + pRows.length + " /c, " + sRows.length + " /lcb)" },
-      { label: "Du cu (/c)", value: formatCurrency(pStats.totalBalance, false) },
-      { label: "Du cu (/lcb)", value: formatCurrency(sStats.totalBalance, false) },
-      "SEPARATOR",
-      { label: "So du cac Bank", value: "0 đ" },
-      { label: "So du cac #Tag", value: "0 đ" },
-      { label: "QUY CA NHAN", value: "0 đ" },
-      { label: "QUY PHU", value: "0 đ" }
-    ],
-    16,
-    21
-  );
+  var blocks = [
+    "🧹 <b>ĐÃ LƯU SỔ LIÊN THÔNG & RESET SỐ DƯ VỀ 0 (/reset)</b>",
+    "🕒 <b>Thời gian:</b> " + escapeHtml(nowStr),
+    "📦 <b>Giao dịch lưu trữ:</b> <b>" +
+      archivedCount +
+      " dòng</b> (" +
+      pRows.length +
+      " /c, " +
+      sRows.length +
+      " /lcb)",
+    "<blockquote>" +
+      "📂 <b>SỐ DƯ CŨ ĐÃ LƯU LỊCH SỬ</b>\n\n" +
+      "• Dư cũ (/c): <b>" +
+      escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+      "</b>\n\n" +
+      "• Dư cũ (/lcb): <b>" +
+      escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+      "</b>\n\n" +
+      "✨ <b>SỐ DƯ KỲ MỚI HIỆN TẠI</b>\n\n" +
+      "• Tất cả Ngân hàng & #Tag: <code>0 đ</code>\n\n" +
+      "• Quỹ Cá Nhân & Quỹ Phụ: <code>0 đ</code>" +
+      "</blockquote>"
+  ];
 
   var sheetUrl = getProperty("SHEET_URL");
-  var msg =
-    "🧹 <b>ĐÃ LƯU SỔ LIÊN THÔNG & RESET SỐ DƯ VỀ 0 (/reset)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>\n\n" +
-    "📦 Đã di chuyển nguyên vẹn <b>" +
-    archivedCount +
-    " dòng giao dịch cũ</b> (đầy đủ Mã GD, Thời gian, Ngân hàng, #Tag, Số tiền, Ghi chú, Link Ảnh Bill) sang nối tiếp tại bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "✨ Số dư hiện tại của tất cả Ngân hàng, #Tag và 2 Quỹ đã đưa về <b>0 đ</b>.";
-
   if (sheetUrl) {
-    msg += "\n\n📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets (Xem tab Lịch Sử Chốt Sổ)</a>";
+    blocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
   }
 
-  return msg;
+  return blocks.join("\n\n");
 }
 
 // Export cho môi trường Node.js Local Dev

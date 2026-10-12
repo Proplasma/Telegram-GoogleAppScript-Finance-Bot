@@ -2,11 +2,14 @@
 
 ---
 
-## Phiên bản 2.2.0: Hybrid UI - Giao diện Đa Tầng & Máy tính Biểu thức Đầy đủ (11/10/2026)
+## Phiên bản 2.2.0: Hybrid UI - Giao diện Đa Tầng, Tối ưu Màn hình Hẹp (Z Fold) & Máy tính Biểu thức (12/10/2026)
 - **Kiến trúc Giao diện Đa Tầng (3-Layer Hybrid UI):**
   - **Tầng 1 (`Open UI Mode` - Web App 3 Tab):** Thêm giao diện đồ họa `src/uiWebApp.html` mở trực tiếp từ bàn phím đáy màn hình Telegram, gồm 3 Tab (`Ghi Thu Chi`, `Số Dư & Hạn Mức`, `Lịch Sử & Sổ`), tích hợp thanh cuộn dọc hiện đại, bảng màu phân biệt Quỹ/Thu/Chi và tính năng tải ảnh hóa đơn (Bill) trực tiếp từ thiết bị lên Google Drive (`uploadBase64BillToDrive`).
-  - **Tầng 2 (`In-Chat Wizard` & Bàn phím cố định):** Thêm `src/controllers/uiController.js` cung cấp bàn phím cố định 7 nút dưới đáy màn hình và luồng chọn nút 4 bước ngay trong khung chat (`/ghi`).
+  - **Tầng 2 (`In-Chat Wizard` & Bàn phím cố định 3 nút):** Tinh gọn bàn phím cố định dưới đáy màn hình (`buildMainReplyKeyboard` trong `src/controllers/uiController.js`) còn đúng 3 nút chính: `📱 Mở App Thu Chi (UI Mode)`, `📊 Số Dư`, và `📜 Lịch sử` (5 giao dịch gần nhất), đồng thời hỗ trợ luồng chọn nút 4 bước ngay trong khung chat (`/ghi`).
   - **Tầng 3 (`CLI Commands`):** Giữ nguyên và tương thích 100% với toàn bộ tập lệnh bắt đầu bằng dấu `/`.
+- **Tối ưu Hiển thị Tin nhắn cho Màn hình Hẹp (Samsung Galaxy Z Fold):**
+  - Thay thế bảng kẻ khung `<pre>` rộng 44 ký tự bằng bố cục tách dòng dọc (giãn cách 1 dòng trắng `\n\n` giữa mỗi dòng phản hồi), hiển thị tiếng Việt có dấu đầy đủ, kết hợp thẻ `<blockquote>` và `<code>` chuẩn Telegram.
+  - Tối giản hóa khung hiển thị Hạn mức (`🎯 Hạn mức #Tag`, `• Đã chi`, `• Còn lại`), tách riêng mục `📸 ẢNH HÓA ĐƠN (BILL)` và `📊 Mở bảng Google Sheets` cách nhau 1 dòng trắng.
 - **Nâng cấp Bộ phân tích Biểu thức Toán học (`src/core/financeParser.js`):**
   - Bổ sung bộ phân tích đệ quy (Recursive Descent Parser) hỗ trợ đầy đủ 4 phép tính Cộng (`+`), Trừ (`-`), Nhân (`*`, `×`), Chia (`/`, `÷`), Ngoặc đơn `( )` và các đơn vị tiền tệ viết tắt (`k`, `tr`, `1tr5`) trên cả bàn phím máy tính UI và câu lệnh chat.
 - **Đóng gói Bộ cài đặt Thủ công (`manual-copy-paste/`):**

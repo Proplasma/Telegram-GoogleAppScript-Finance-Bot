@@ -2269,7 +2269,7 @@ function calculateSheetStats(rows) {
 }
 
 /**
- * Tạo dòng thông báo kiểm tra Hạn mức (/limit) cho một #Tag
+ * Tạo dòng thông báo kiểm tra Hạn mức (/limit) cho một #Tag (Tối giản, dịu mắt cho Z Fold)
  * @param {string} tag
  * @param {number} spentAmount
  * @returns {string}
@@ -2286,36 +2286,37 @@ function buildLimitAlertText(tag, spentAmount) {
   var percent = Math.round((spent / limitVal) * 100);
   var remain = limitVal - spent;
 
-  var statusLabel = "🟢 An toan";
+  var statusLabel = "An toàn";
   if (percent >= 100) {
-    statusLabel = "🔴 VUOT HAN MUC";
+    statusLabel = "Vượt hạn mức";
   } else if (percent >= 80) {
-    statusLabel = "🟡 Sap cham tran";
+    statusLabel = "Sắp chạm trần";
   }
 
-  var alertBox = renderBoxTable(
-    [
-      { label: "Han muc", value: formatCurrency(limitVal, false) },
-      { label: "Da chi", value: formatCurrency(spent, false) + " (" + percent + "%)" },
-      { label: "Con lai", value: formatCurrency(remain, false) },
-      { label: "Trang thai", value: statusLabel }
-    ],
-    13,
-    23
-  );
-
   return (
-    "\n\n🎯 <b>THEO DÕI HẠN MỨC " +
+    "<blockquote>" +
+    "🎯 <b>Hạn mức <code>" +
     escapeHtml(normTag) +
-    "</b>\n\n" +
-    "<pre>" +
-    escapeHtml(alertBox) +
-    "</pre>"
+    "</code>:</b> " +
+    escapeHtml(formatCurrency(limitVal, false)) +
+    "\n\n" +
+    "• Đã chi: " +
+    escapeHtml(formatCurrency(spent, false)) +
+    " (" +
+    percent +
+    "%)\n\n" +
+    "• Còn lại: <b>" +
+    escapeHtml(formatCurrency(remain, false)) +
+    "</b> <i>(" +
+    statusLabel +
+    ")</i>" +
+    "</blockquote>"
   );
 }
 
 /**
  * Ghi nhận giao dịch mới cho /c, /lcb hoặc /clcb
+ * Giao diện tối ưu cho màn hình hẹp Samsung Galaxy Z Fold (cách 1 dòng trắng giữa mỗi dòng)
  * @param {string} mode - "c" | "lcb" | "clcb"
  * @param {object} parsedTx - Kết quả từ parseTransactionArgs()
  * @param {string} userLabel - Tên & ID người nhập
@@ -2352,53 +2353,61 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
   };
 
   var isIncome = parsedTx.amount >= 0;
-  var typeLabel = isIncome ? "🟢 THU VAO (+)" : "🔴 CHI RA (-)";
   var amountFormatted = formatCurrency(parsedTx.amount, true);
+  var flowLine = isIncome
+    ? "🟢 <b>Thu vào:</b> <code>" + escapeHtml(amountFormatted) + "</code>"
+    : "🔴 <b>Chi ra:</b> <code>" + escapeHtml(amountFormatted) + "</code>";
 
   var titleHeader = "";
-  var tableRows = [];
+  var balanceQuote = "";
   var limitSection = "";
 
   if (mode === "c") {
     appendTransactionRow(SHEET_NAMES.PERSONAL, txRecord);
     var cStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
 
-    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH  |  💼 QUỸ CÁ NHÂN (/c)</b>";
-    tableRows = [
-      { label: "Ma GD", value: txId },
-      { label: "Loai GD", value: typeLabel },
-      "SEPARATOR",
-      { label: "Ngan hang", value: parsedTx.bank },
-      { label: "Phan loai", value: parsedTx.tag },
-      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
-      { label: "So tien", value: amountFormatted },
-      { label: "Ghi chu", value: parsedTx.note },
-      "SEPARATOR",
-      { label: "Du " + parsedTx.tag, value: formatCurrency(cStats.byTag[parsedTx.tag] || 0, false) },
-      { label: "Du " + parsedTx.bank, value: formatCurrency(cStats.byBank[parsedTx.bank] || 0, false) },
-      { label: "TONG QUY", value: formatCurrency(cStats.totalBalance, false) }
-    ];
+    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH (/c)</b>";
+    balanceQuote =
+      "<blockquote>" +
+      "💰 <b>SỐ DƯ SAU GIAO DỊCH</b>\n\n" +
+      "• Dư <code>" +
+      escapeHtml(parsedTx.tag) +
+      "</code>: <b>" +
+      escapeHtml(formatCurrency(cStats.byTag[parsedTx.tag] || 0, false)) +
+      "</b>\n\n" +
+      "• Dư " +
+      escapeHtml(parsedTx.bank) +
+      ": <b>" +
+      escapeHtml(formatCurrency(cStats.byBank[parsedTx.bank] || 0, false)) +
+      "</b>\n\n" +
+      "💎 <b>Tổng Quỹ Cá Nhân:</b> <code>" +
+      escapeHtml(formatCurrency(cStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>";
 
     limitSection = buildLimitAlertText(parsedTx.tag, cStats.spentByTag[parsedTx.tag] || 0);
   } else if (mode === "lcb") {
     appendTransactionRow(SHEET_NAMES.SUB_FUND, txRecord);
     var lcbStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.SUB_FUND));
 
-    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH  |  🏦 QUỸ PHỤ (/lcb)</b>";
-    tableRows = [
-      { label: "Ma GD", value: txId },
-      { label: "Loai GD", value: typeLabel },
-      "SEPARATOR",
-      { label: "Ngan hang", value: parsedTx.bank },
-      { label: "Phan loai", value: parsedTx.tag },
-      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
-      { label: "So tien", value: amountFormatted },
-      { label: "Ghi chu", value: parsedTx.note },
-      "SEPARATOR",
-      { label: "Du " + parsedTx.tag, value: formatCurrency(lcbStats.byTag[parsedTx.tag] || 0, false) },
-      { label: "Du " + parsedTx.bank, value: formatCurrency(lcbStats.byBank[parsedTx.bank] || 0, false) },
-      { label: "TONG QUY PHU", value: formatCurrency(lcbStats.totalBalance, false) }
-    ];
+    titleHeader = "✅ <b>GHI NHẬN GIAO DỊCH (/lcb)</b>";
+    balanceQuote =
+      "<blockquote>" +
+      "💰 <b>SỐ DƯ SAU GIAO DỊCH</b>\n\n" +
+      "• Dư <code>" +
+      escapeHtml(parsedTx.tag) +
+      "</code>: <b>" +
+      escapeHtml(formatCurrency(lcbStats.byTag[parsedTx.tag] || 0, false)) +
+      "</b>\n\n" +
+      "• Dư " +
+      escapeHtml(parsedTx.bank) +
+      ": <b>" +
+      escapeHtml(formatCurrency(lcbStats.byBank[parsedTx.bank] || 0, false)) +
+      "</b>\n\n" +
+      "💎 <b>Tổng Quỹ Phụ:</b> <code>" +
+      escapeHtml(formatCurrency(lcbStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>";
 
     limitSection = buildLimitAlertText(parsedTx.tag, lcbStats.spentByTag[parsedTx.tag] || 0);
   } else if (mode === "clcb") {
@@ -2408,53 +2417,60 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
     var bothPersonalStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
     var bothSubStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.SUB_FUND));
 
-    titleHeader = "✅ <b>GHI ĐỒNG THỜI 2 QUỸ  |  ⚡ (/clcb)</b>";
-    tableRows = [
-      { label: "Ma GD", value: txId },
-      { label: "Loai GD", value: typeLabel },
-      "SEPARATOR",
-      { label: "Ngan hang", value: parsedTx.bank },
-      { label: "Phan loai", value: parsedTx.tag },
-      { label: "Bieu thuc", value: String(parsedTx.rawAmount || parsedTx.amount) },
-      { label: "So tien", value: amountFormatted },
-      { label: "Ghi chu", value: parsedTx.note },
-      "SEPARATOR",
-      { label: "Du " + parsedTx.tag + " (/c)", value: formatCurrency(bothPersonalStats.byTag[parsedTx.tag] || 0, false) },
-      { label: "Du " + parsedTx.tag + " (/lcb)", value: formatCurrency(bothSubStats.byTag[parsedTx.tag] || 0, false) },
-      "SEPARATOR",
-      { label: "QUY CA NHAN", value: formatCurrency(bothPersonalStats.totalBalance, false) },
-      { label: "QUY PHU", value: formatCurrency(bothSubStats.totalBalance, false) }
-    ];
+    titleHeader = "✅ <b>GHI ĐỒNG THỜI 2 QUỸ (/clcb)</b>";
+    balanceQuote =
+      "<blockquote>" +
+      "💰 <b>SỐ DƯ SAU GIAO DỊCH</b>\n\n" +
+      "• Dư <code>" +
+      escapeHtml(parsedTx.tag) +
+      "</code> (/c): <b>" +
+      escapeHtml(formatCurrency(bothPersonalStats.byTag[parsedTx.tag] || 0, false)) +
+      "</b>\n\n" +
+      "• Dư <code>" +
+      escapeHtml(parsedTx.tag) +
+      "</code> (/lcb): <b>" +
+      escapeHtml(formatCurrency(bothSubStats.byTag[parsedTx.tag] || 0, false)) +
+      "</b>\n\n" +
+      "📘 <b>Tổng Quỹ Cá Nhân:</b> <code>" +
+      escapeHtml(formatCurrency(bothPersonalStats.totalBalance, false)) +
+      "</code>\n\n" +
+      "📙 <b>Tổng Quỹ Phụ:</b> <code>" +
+      escapeHtml(formatCurrency(bothSubStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>";
 
     limitSection = buildLimitAlertText(parsedTx.tag, bothPersonalStats.spentByTag[parsedTx.tag] || 0);
   }
 
-  var boxTableStr = renderBoxTable(tableRows, 15, 22);
-
-  var messageParts = [
+  // Mỗi dòng phản hồi cách nhau 1 dòng trắng (\n\n) để thoáng mắt trên Samsung Z Fold
+  var messageBlocks = [
     titleHeader,
-    "",
-    "<pre>" + escapeHtml(boxTableStr) + "</pre>"
+    flowLine,
+    "🧮 <b>Phép tính:</b> <code>" + escapeHtml(String(parsedTx.rawAmount || parsedTx.amount)) + "</code>",
+    "🏦 <b>Ngân hàng:</b> " + escapeHtml(parsedTx.bank),
+    "🏷️ <b>Phân loại:</b> <code>" + escapeHtml(parsedTx.tag) + "</code>",
+    "📝 <b>Ghi chú:</b> " + escapeHtml(parsedTx.note),
+    "🆔 <b>Mã GD:</b> <code>" + escapeHtml(txId) + "</code>",
+    balanceQuote
   ];
 
   if (limitSection) {
-    messageParts.push(limitSection);
+    messageBlocks.push(limitSection);
   }
 
+  // Tách riêng mục Ảnh Hóa Đơn (Bill) và Mở bảng Google Sheets cách nhau 1 dòng trắng
   if (billUrl) {
     var linkLabel =
       billUrl.indexOf("drive.google.com") > -1
         ? "🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive"
         : "🖼 Mở xem file ảnh hóa đơn (Bill)";
-    messageParts.push(
-      "",
+    messageBlocks.push(
       "📸 <b>ẢNH HÓA ĐƠN (BILL):</b>\n<a href=\"" + escapeHtml(billUrl) + "\">" + linkLabel + "</a>"
     );
   }
 
   if (hasPhoto && billError) {
-    messageParts.push(
-      "",
+    messageBlocks.push(
       "⚠️ <i>Lưu ý Google Drive: " +
         escapeHtml(billError) +
         " (Mở GAS Editor -> Chọn hàm ActivateBot hoặc GrantAllPermissions -> Bấm Run để cấp quyền Drive).</i>"
@@ -2463,10 +2479,7 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
 
   var sheetUrl = getProperty("SHEET_URL");
   if (sheetUrl) {
-    messageParts.push(
-      "",
-      "📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>"
-    );
+    messageBlocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
   }
 
   var replyMarkup = {
@@ -2481,7 +2494,7 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
   };
 
   return {
-    text: messageParts.join("\n"),
+    text: messageBlocks.join("\n\n"),
     replyMarkup: replyMarkup
   };
 }
@@ -2540,38 +2553,40 @@ function executeUndoTransaction(targetMode, specificTxId) {
 
   var scopeName =
     deletedPersonal && deletedSub
-      ? "Ca 2 Quy (/clcb)"
+      ? "Cả 2 Quỹ (/clcb)"
       : deletedPersonal
-      ? "Quy Ca Nhan (/c)"
-      : "Quy Phu (/lcb)";
+      ? "Quỹ Cá Nhân (/c)"
+      : "Quỹ Phụ (/lcb)";
 
-  var box = renderBoxTable(
-    [
-      { label: "Ma GD xoa", value: sample.txId || "N/A" },
-      { label: "Pham vi", value: scopeName },
-      "SEPARATOR",
-      { label: "Ngan hang", value: sample.bank },
-      { label: "Phan loai", value: sample.tag },
-      { label: "So tien xoa", value: formatCurrency(sample.amount, true) },
-      { label: "Ghi chu", value: sample.note },
-      "SEPARATOR",
-      { label: "Quy Ca Nhan", value: formatCurrency(cStats.totalBalance, false) },
-      { label: "Quy Phu", value: formatCurrency(lcbStats.totalBalance, false) }
-    ],
-    15,
-    22
-  );
+  var blocks = [
+    "↩️ <b>ĐÃ HOÀN TÁC GIAO DỊCH</b>",
+    "🆔 <b>Mã GD xóa:</b> <code>" + escapeHtml(sample.txId || "N/A") + "</code>",
+    "📂 <b>Phạm vi:</b> " + escapeHtml(scopeName),
+    "🏦 <b>Ngân hàng:</b> " + escapeHtml(sample.bank) + "  •  <code>" + escapeHtml(sample.tag) + "</code>",
+    "💰 <b>Số tiền xóa:</b> <code>" + escapeHtml(formatCurrency(sample.amount, true)) + "</code>",
+    "📝 <b>Ghi chú:</b> " + escapeHtml(sample.note),
+    "<blockquote>" +
+      "💎 <b>SỐ DƯ CẬP NHẬT</b>\n\n" +
+      "📘 <b>Quỹ Cá Nhân:</b> <code>" +
+      escapeHtml(formatCurrency(cStats.totalBalance, false)) +
+      "</code>\n\n" +
+      "📙 <b>Quỹ Phụ:</b> <code>" +
+      escapeHtml(formatCurrency(lcbStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>"
+  ];
 
-  return (
-    "↩️ <b>ĐÃ HOÀN TÁC (XÓA) GIAO DỊCH THÀNH CÔNG</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>"
-  );
+  var sheetUrl = getProperty("SHEET_URL");
+  if (sheetUrl) {
+    blocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
+  }
+
+  return blocks.join("\n\n");
 }
 
 /**
  * Tạo báo cáo Số dư tổng hợp (/sodu hoặc /balance)
+ * Tối ưu hiển thị thoáng dòng cho Samsung Galaxy Z Fold
  * @returns {string}
  */
 function buildBalanceReport() {
@@ -2582,74 +2597,72 @@ function buildBalanceReport() {
   var sStats = calculateSheetStats(subRows);
   var limitsMap = getAllTagLimits();
 
-  var overviewBox = renderBoxTable(
-    [
-      { label: "QUY CA NHAN", value: formatCurrency(pStats.totalBalance, false) },
-      { label: "QUY PHU", value: formatCurrency(sStats.totalBalance, false) }
-    ],
-    15,
-    22
-  );
+  var overviewBlock =
+    "<blockquote>" +
+    "💰 <b>1. TỔNG QUAN HAI QUỸ</b>\n\n" +
+    "📘 <b>Quỹ Cá Nhân (/c):</b> <code>" +
+    escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+    "</code>\n\n" +
+    "📙 <b>Quỹ Phụ (/lcb):</b> <code>" +
+    escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+    "</code>" +
+    "</blockquote>";
 
-  var bankRows = [];
+  var bankLines = ["🏦 <b>2. THEO NGÂN HÀNG (QUỸ CÁ NHÂN)</b>"];
   var bankKeys = Object.keys(pStats.byBank);
   if (bankKeys.length === 0) {
-    bankRows.push({ label: "Mac dinh", value: "0 đ" });
+    bankLines.push("• <b>Mặc định:</b> 0 đ");
   } else {
     for (var i = 0; i < bankKeys.length; i++) {
       var bName = bankKeys[i];
-      bankRows.push({
-        label: bName,
-        value: formatCurrency(pStats.byBank[bName], false)
-      });
+      bankLines.push(
+        "• <b>" +
+          escapeHtml(bName) +
+          ":</b> " +
+          escapeHtml(formatCurrency(pStats.byBank[bName], false))
+      );
     }
   }
-  var bankBox = renderBoxTable(bankRows, 15, 22);
+  var bankBlock = "<blockquote>" + bankLines.join("\n\n") + "</blockquote>";
 
-  var tagRows = [];
+  var tagLines = ["🏷️ <b>3. THEO PHÂN LOẠI (#TAG)</b>"];
   var tagKeys = Object.keys(pStats.byTag);
   if (tagKeys.length === 0) {
-    tagRows.push({ label: "Mac dinh", value: "0 đ" });
+    tagLines.push("• <b>Mặc định:</b> 0 đ");
   } else {
     for (var j = 0; j < tagKeys.length; j++) {
       var tName = tagKeys[j];
       var tBal = formatCurrency(pStats.byTag[tName], false);
+      var lineStr = "• <code>" + escapeHtml(tName) + "</code>: <b>" + escapeHtml(tBal) + "</b>";
       if (limitsMap[tName]) {
         var spent = pStats.spentByTag[tName] || 0;
-        var pct = Math.round((spent / limitsMap[tName]) * 100);
-        tBal += " (" + pct + "% HM)";
+        var remain = limitsMap[tName] - spent;
+        lineStr +=
+          "\n  <i>(Hạn mức còn: " + escapeHtml(formatCurrency(remain, false)) + ")</i>";
       }
-      tagRows.push({
-        label: tName,
-        value: tBal
-      });
+      tagLines.push(lineStr);
     }
   }
-  var tagBox = renderBoxTable(tagRows, 15, 22);
+  var tagBlock = "<blockquote>" + tagLines.join("\n\n") + "</blockquote>";
 
   var parts = [
-    "📊 <b>BÁO CÁO SỐ DƯ TÀI CHÍNH (/sodu)</b>",
-    "",
-    "💰 <b>1. TỔNG QUAN HAI QUỸ:</b>",
-    "<pre>" + escapeHtml(overviewBox) + "</pre>",
-    "",
-    "🏦 <b>2. SỐ DƯ THEO NGÂN HÀNG (QUỸ CÁ NHÂN):</b>",
-    "<pre>" + escapeHtml(bankBox) + "</pre>",
-    "",
-    "🏷️ <b>3. SỐ DƯ THEO PHÂN LOẠI #TAG:</b>",
-    "<pre>" + escapeHtml(tagBox) + "</pre>"
+    "📊 <b>BÁO CÁO SỐ DƯ TÀI CHÍNH</b>",
+    overviewBlock,
+    bankBlock,
+    tagBlock
   ];
 
   var sheetUrl = getProperty("SHEET_URL");
   if (sheetUrl) {
-    parts.push("", "📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets chi tiết</a>");
+    parts.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
   }
 
-  return parts.join("\n");
+  return parts.join("\n\n");
 }
 
 /**
  * Xem lại 5 giao dịch gần nhất (/ls hoặc /history)
+ * Tối ưu hiển thị thoáng dòng cho Samsung Galaxy Z Fold
  * @param {number} [limitCount=5]
  * @returns {string}
  */
@@ -2661,57 +2674,70 @@ function buildRecentHistoryReport(limitCount) {
   var recentP = pRows.slice(-count).reverse();
   var recentS = sRows.slice(-count).reverse();
 
-  var parts = ["📜 <b>LỊCH SỬ " + count + " GIAO DỊCH GẦN NHẤT (/ls)</b>"];
+  var parts = ["📜 <b>" + count + " GIAO DỊCH GẦN NHẤT</b>"];
 
-  parts.push("", "--------------------------------", "📘 <b>1. QUỸ CÁ NHÂN (/c):</b>");
+  parts.push("📘 <b>1. QUỸ CÁ NHÂN (/c)</b>");
   if (recentP.length === 0) {
     parts.push("<i>(Chưa có giao dịch nào)</i>");
   } else {
     for (var i = 0; i < recentP.length; i++) {
       var item = recentP[i];
-      var box = renderBoxTable(
-        [
-          { label: "Thoi gian", value: item.time },
-          { label: "Ngan hang", value: item.bank + " | " + item.tag },
-          { label: "So tien", value: formatCurrency(item.amount, true) },
-          { label: "Ghi chu", value: item.note }
-        ],
-        13,
-        24
-      );
-      var itemText = "\n<pre>" + escapeHtml(box) + "</pre>";
+      var iconP = Number(item.amount) >= 0 ? "🟢" : "🔴";
+      var linesP = [
+        iconP +
+          " <b><code>" +
+          escapeHtml(formatCurrency(item.amount, true)) +
+          "</code></b>  •  <code>" +
+          escapeHtml(item.tag) +
+          "</code>",
+        "🏦 " + escapeHtml(item.bank) + "  •  🕒 " + escapeHtml(item.time),
+        "📝 " + escapeHtml(item.note)
+      ];
       if (item.billUrl) {
-        itemText += "\n🖼 <a href=\"" + escapeHtml(item.billUrl) + "\">Xem ảnh Bill (" + escapeHtml(item.txId) + ")</a>";
+        var billLabelP =
+          item.billUrl.indexOf("drive.google.com") > -1
+            ? "🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive"
+            : "🖼 Mở xem ảnh hóa đơn (Bill)";
+        linesP.push("<a href=\"" + escapeHtml(item.billUrl) + "\">" + billLabelP + "</a>");
       }
-      parts.push(itemText);
+      parts.push("<blockquote>" + linesP.join("\n\n") + "</blockquote>");
     }
   }
 
-  parts.push("", "--------------------------------", "📙 <b>2. QUỸ PHỤ (/lcb):</b>");
+  parts.push("📙 <b>2. QUỸ PHỤ (/lcb)</b>");
   if (recentS.length === 0) {
     parts.push("<i>(Chưa có giao dịch nào)</i>");
   } else {
     for (var j = 0; j < recentS.length; j++) {
       var sItem = recentS[j];
-      var sBox = renderBoxTable(
-        [
-          { label: "Thoi gian", value: sItem.time },
-          { label: "Ngan hang", value: sItem.bank + " | " + sItem.tag },
-          { label: "So tien", value: formatCurrency(sItem.amount, true) },
-          { label: "Ghi chu", value: sItem.note }
-        ],
-        13,
-        24
-      );
-      var sItemText = "\n<pre>" + escapeHtml(sBox) + "</pre>";
+      var iconS = Number(sItem.amount) >= 0 ? "🟢" : "🔴";
+      var linesS = [
+        iconS +
+          " <b><code>" +
+          escapeHtml(formatCurrency(sItem.amount, true)) +
+          "</code></b>  •  <code>" +
+          escapeHtml(sItem.tag) +
+          "</code>",
+        "🏦 " + escapeHtml(sItem.bank) + "  •  🕒 " + escapeHtml(sItem.time),
+        "📝 " + escapeHtml(sItem.note)
+      ];
       if (sItem.billUrl) {
-        sItemText += "\n🖼 <a href=\"" + escapeHtml(sItem.billUrl) + "\">Xem ảnh Bill (" + escapeHtml(sItem.txId) + ")</a>";
+        var billLabelS =
+          sItem.billUrl.indexOf("drive.google.com") > -1
+            ? "🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive"
+            : "🖼 Mở xem ảnh hóa đơn (Bill)";
+        linesS.push("<a href=\"" + escapeHtml(sItem.billUrl) + "\">" + billLabelS + "</a>");
       }
-      parts.push(sItemText);
+      parts.push("<blockquote>" + linesS.join("\n\n") + "</blockquote>");
     }
   }
 
-  return parts.join("\n");
+  var sheetUrl = getProperty("SHEET_URL");
+  if (sheetUrl) {
+    parts.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
+  }
+
+  return parts.join("\n\n");
 }
 
 /**
@@ -2731,25 +2757,30 @@ function handleSetLimitCommand(argsText, userLabel) {
   var pStats = calculateSheetStats(getAllTransactionRows(SHEET_NAMES.PERSONAL));
   var currentSpent = pStats.spentByTag[parsed.tag] || 0;
   var percent = Math.round((currentSpent / parsed.limitAmount) * 100);
+  var remain = parsed.limitAmount - currentSpent;
 
-  var box = renderBoxTable(
-    [
-      { label: "Phan loai", value: parsed.tag },
-      { label: "Han muc moi", value: formatCurrency(parsed.limitAmount, false) },
-      "SEPARATOR",
-      { label: "Da chi ky nay", value: formatCurrency(currentSpent, false) + " (" + percent + "%)" },
-      { label: "Con duoc tieu", value: formatCurrency(parsed.limitAmount - currentSpent, false) }
-    ],
-    15,
-    22
-  );
+  var blocks = [
+    "🎯 <b>ĐÃ CẬP NHẬT HẠN MỨC CHI TIÊU (/limit)</b>",
+    "🏷️ <b>Phân loại:</b> <code>" + escapeHtml(parsed.tag) + "</code>",
+    "💰 <b>Hạn mức mới:</b> <code>" + escapeHtml(formatCurrency(parsed.limitAmount, false)) + "</code>",
+    "<blockquote>" +
+      "• Đã chi kỳ này: " +
+      escapeHtml(formatCurrency(currentSpent, false)) +
+      " (" +
+      percent +
+      "%)\n\n" +
+      "• Còn lại: <b>" +
+      escapeHtml(formatCurrency(remain, false)) +
+      "</b>" +
+      "</blockquote>"
+  ];
 
-  return (
-    "🎯 <b>ĐÃ CẬP NHẬT HẠN MỨC CHI TIÊU (/limit)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>"
-  );
+  var sheetUrl = getProperty("SHEET_URL");
+  if (sheetUrl) {
+    blocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
+  }
+
+  return blocks.join("\n\n");
 }
 
 /**
@@ -2763,27 +2794,26 @@ function buildRenewPreview() {
   var pStats = calculateSheetStats(pRows);
   var sStats = calculateSheetStats(sRows);
 
-  var box = renderBoxTable(
-    [
-      { label: "Dong Quy Chinh", value: pRows.length + " giao dich" },
-      { label: "Dong Quy Phu", value: sRows.length + " giao dich" },
-      "SEPARATOR",
-      { label: "Quy Ca Nhan", value: formatCurrency(pStats.totalBalance, false) },
-      { label: "Quy Phu", value: formatCurrency(sStats.totalBalance, false) }
-    ],
-    15,
-    22
-  );
-
-  var text =
-    "📅 <b>XÁC NHẬN CHỐT SỔ CUỐI KỲ (/chotso)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>\n\n" +
-    "<b>Khi xác nhận Chốt sổ (/chotso):</b>\n" +
-    "1️⃣ Toàn bộ các dòng giao dịch kỳ này sẽ được chuyển sang bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "2️⃣ Các dòng giao dịch lẻ được gom gọn thành dòng <b>Số dư đầu kỳ</b> mới cho từng Ngân hàng & #Tag.\n" +
-    "<i>(Nếu muốn lưu sổ và đưa toàn bộ số dư về 0, hãy dùng lệnh /reset)</i>";
+  var text = [
+    "📅 <b>XÁC NHẬN CHỐT SỔ CUỐI KỲ (/chotso)</b>",
+    "<blockquote>" +
+      "📘 <b>Quỹ Cá Nhân (/c):</b> " +
+      pRows.length +
+      " giao dịch\n\n" +
+      "👉 Số dư: <b><code>" +
+      escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+      "</code></b>\n\n" +
+      "📙 <b>Quỹ Phụ (/lcb):</b> " +
+      sRows.length +
+      " giao dịch\n\n" +
+      "👉 Số dư: <b><code>" +
+      escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+      "</code></b>" +
+      "</blockquote>",
+    "1️⃣ Toàn bộ các dòng giao dịch kỳ này sẽ được chuyển sang bảng <b>Lịch Sử Chốt Sổ</b>.",
+    "2️⃣ Các dòng giao dịch lẻ được gom gọn thành dòng <b>Số dư đầu kỳ</b> mới cho từng Ngân hàng & #Tag.",
+    "<i>(Nếu muốn lưu sổ và đưa toàn bộ số dư về 0, hãy dùng lệnh /reset)</i>"
+  ].join("\n\n");
 
   var replyMarkup = {
     inline_keyboard: [
@@ -2867,28 +2897,27 @@ function executeRenewPeriod(userLabel) {
   resetSheetWithOpeningBalances(SHEET_NAMES.PERSONAL, newPersonalOpening);
   resetSheetWithOpeningBalances(SHEET_NAMES.SUB_FUND, newSubOpening);
 
-  var box = renderBoxTable(
-    [
-      { label: "Thoi gian", value: nowStr },
-      { label: "Da chuyen su", value: archivedCount + " dong giao dich" },
-      "SEPARATOR",
-      { label: "Du dau ky /c", value: formatCurrency(pStats.totalBalance, false) },
-      { label: "Du dau ky /lcb", value: formatCurrency(sStats.totalBalance, false) }
-    ],
-    15,
-    22
-  );
+  var blocks = [
+    "✅ <b>ĐÃ CHỐT SỔ SANG KỲ MỚI THÀNH CÔNG</b>",
+    "🕒 <b>Thời gian:</b> " + escapeHtml(nowStr),
+    "📦 <b>Đã chuyển sổ:</b> <b>" + archivedCount + " dòng giao dịch</b> sang bảng <b>Lịch Sử Chốt Sổ</b>",
+    "<blockquote>" +
+      "🌱 <b>SỐ DƯ ĐẦU KỲ MỚI</b>\n\n" +
+      "📘 <b>Quỹ Cá Nhân (/c):</b> <code>" +
+      escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+      "</code>\n\n" +
+      "📙 <b>Quỹ Phụ (/lcb):</b> <code>" +
+      escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+      "</code>" +
+      "</blockquote>"
+  ];
 
-  return (
-    "✅ <b>ĐÃ CHỐT SỔ SANG KỲ MỚI THÀNH CÔNG</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>\n\n" +
-    "📦 Toàn bộ <b>" +
-    archivedCount +
-    " giao dịch chi tiết</b> (kèm Ghi chú & Link Bill) đã được chuyển nguyên vẹn sang bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "🌱 Đã khởi tạo dòng <b>Số dư đầu kỳ</b> mới cho kỳ tiếp theo."
-  );
+  var sheetUrl = getProperty("SHEET_URL");
+  if (sheetUrl) {
+    blocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
+  }
+
+  return blocks.join("\n\n");
 }
 
 /**
@@ -2919,38 +2948,36 @@ function executeResetAllToZero(userLabel) {
   resetSheetWithOpeningBalances(SHEET_NAMES.PERSONAL, []);
   resetSheetWithOpeningBalances(SHEET_NAMES.SUB_FUND, []);
 
-  var box = renderBoxTable(
-    [
-      { label: "Thoi gian", value: nowStr },
-      { label: "GD chuyen su", value: archivedCount + " dong (" + pRows.length + " /c, " + sRows.length + " /lcb)" },
-      { label: "Du cu (/c)", value: formatCurrency(pStats.totalBalance, false) },
-      { label: "Du cu (/lcb)", value: formatCurrency(sStats.totalBalance, false) },
-      "SEPARATOR",
-      { label: "So du cac Bank", value: "0 đ" },
-      { label: "So du cac #Tag", value: "0 đ" },
-      { label: "QUY CA NHAN", value: "0 đ" },
-      { label: "QUY PHU", value: "0 đ" }
-    ],
-    16,
-    21
-  );
+  var blocks = [
+    "🧹 <b>ĐÃ LƯU SỔ LIÊN THÔNG & RESET SỐ DƯ VỀ 0 (/reset)</b>",
+    "🕒 <b>Thời gian:</b> " + escapeHtml(nowStr),
+    "📦 <b>Giao dịch lưu trữ:</b> <b>" +
+      archivedCount +
+      " dòng</b> (" +
+      pRows.length +
+      " /c, " +
+      sRows.length +
+      " /lcb)",
+    "<blockquote>" +
+      "📂 <b>SỐ DƯ CŨ ĐÃ LƯU LỊCH SỬ</b>\n\n" +
+      "• Dư cũ (/c): <b>" +
+      escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+      "</b>\n\n" +
+      "• Dư cũ (/lcb): <b>" +
+      escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+      "</b>\n\n" +
+      "✨ <b>SỐ DƯ KỲ MỚI HIỆN TẠI</b>\n\n" +
+      "• Tất cả Ngân hàng & #Tag: <code>0 đ</code>\n\n" +
+      "• Quỹ Cá Nhân & Quỹ Phụ: <code>0 đ</code>" +
+      "</blockquote>"
+  ];
 
   var sheetUrl = getProperty("SHEET_URL");
-  var msg =
-    "🧹 <b>ĐÃ LƯU SỔ LIÊN THÔNG & RESET SỐ DƯ VỀ 0 (/reset)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>\n\n" +
-    "📦 Đã di chuyển nguyên vẹn <b>" +
-    archivedCount +
-    " dòng giao dịch cũ</b> (đầy đủ Mã GD, Thời gian, Ngân hàng, #Tag, Số tiền, Ghi chú, Link Ảnh Bill) sang nối tiếp tại bảng <b>Lịch Sử Chốt Sổ</b>.\n" +
-    "✨ Số dư hiện tại của tất cả Ngân hàng, #Tag và 2 Quỹ đã đưa về <b>0 đ</b>.";
-
   if (sheetUrl) {
-    msg += "\n\n📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets (Xem tab Lịch Sử Chốt Sổ)</a>";
+    blocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
   }
 
-  return msg;
+  return blocks.join("\n\n");
 }
 
 // Export cho môi trường Node.js Local Dev
@@ -3019,22 +3046,23 @@ function getWebAppUiUrl(userId) {
 
 /**
  * Tạo cấu trúc Bàn phím cố định dưới đáy màn hình (Persistent Reply Keyboard)
- * Hàng 1 luôn là nút "📱 Open UI Mode" mở trực tiếp Telegram Mini App / Web App
+ * Tối giản 3 nút cho màn hình Samsung Galaxy Z Fold:
+ * 1. "📱 Mở App Thu Chi (UI Mode)" (Mở trực tiếp Telegram Mini App / Web App)
+ * 2. "📊 Số Dư"
+ * 3. "📜 Lịch sử" (Gọi 5 giao dịch gần nhất)
  * @param {string|number} userId
  * @returns {object} reply_markup
  */
 function buildMainReplyKeyboard(userId) {
   var uiUrl = getWebAppUiUrl(userId);
   var openUiButton = uiUrl
-    ? { text: "📱 Open UI Mode", web_app: { url: uiUrl } }
-    : { text: "📱 Open UI Mode" };
+    ? { text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }
+    : { text: "📱 Mở App Thu Chi (UI Mode)" };
 
   return {
     keyboard: [
       [openUiButton],
-      [{ text: "➕ Ghi Thu / Chi" }, { text: "📊 Xem Số Dư" }],
-      [{ text: "📜 5 GD Gần Nhất" }, { text: "↩️ Hoàn Tác (Undo)" }],
-      [{ text: "🎯 Đặt Hạn Mức" }, { text: "📅 Chốt Sổ / Reset" }]
+      [{ text: "📊 Số Dư" }, { text: "📜 Lịch sử" }]
     ],
     resize_keyboard: true,
     is_persistent: true
@@ -3371,26 +3399,27 @@ function sendWizardStep4(chatId, messageId, tag) {
   state.tag = normalizeTag(tag || state.tag || "#CHUNG");
   setWizardState(chatId, state);
 
-  var dirLabel = state.sign === "-" ? "CHI RA (-)" : "THU VAO (+)";
-  var summaryBox = renderBoxTable(
-    [
-      { label: "Quy ghi chep", value: "/" + state.fund + " (" + dirLabel + ")" },
-      { label: "Ngan hang", value: state.bank },
-      { label: "Phan loai", value: state.tag }
-    ],
-    14,
-    23
-  );
-
-  var text =
-    "🧮 <b>GHI THU / CHI TỪNG BƯỚC (BƯỚC 4/4)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(summaryBox) +
-    "</pre>\n\n" +
-    "✍️ <b>Hãy gõ vào ô chat:</b> <code>&lt;Số tiền hoặc Phép tính&gt; [Ghi chú]</code>\n" +
-    "• Ví dụ 1: <code>55k mua trà đào</code>\n" +
-    "• Ví dụ 2 (Nhân/Chia/Cộng/Trừ): <code>(120k+30k)/3 ăn trưa chia 3</code>\n" +
-    "• 📸 Hoặc gửi <b>Ảnh Bill</b> kèm chú thích số tiền.";
+  var dirLabel = state.sign === "-" ? "🔴 CHI RA (-)" : "🟢 THU VÀO (+)";
+  var text = [
+    "🧮 <b>GHI THU / CHI TỪNG BƯỚC (BƯỚC 4/4)</b>",
+    "<blockquote>" +
+      "• <b>Quỹ ghi chép:</b> <code>/" +
+      escapeHtml(state.fund) +
+      "</code> (" +
+      dirLabel +
+      ")\n\n" +
+      "• <b>Ngân hàng:</b> " +
+      escapeHtml(state.bank) +
+      "\n\n" +
+      "• <b>Phân loại:</b> <code>" +
+      escapeHtml(state.tag) +
+      "</code>" +
+      "</blockquote>",
+    "✍️ <b>Hãy gõ vào ô chat:</b> <code>&lt;Số tiền hoặc Phép tính&gt; [Ghi chú]</code>",
+    "• Ví dụ 1: <code>55k mua trà đào</code>",
+    "• Ví dụ 2 (Nhân/Chia/Cộng/Trừ): <code>(120k+30k)/3 ăn trưa chia 3</code>",
+    "• 📸 Hoặc gửi <b>Ảnh Bill</b> kèm chú thích số tiền."
+  ].join("\n\n");
 
   var rows = [
     [
@@ -3451,22 +3480,23 @@ function sendClosingMenu(chatId) {
   var pStats = calculateSheetStats(pRows);
   var sStats = calculateSheetStats(sRows);
 
-  var box = renderBoxTable(
-    [
-      { label: "GD Quy Ca Nhan", value: pRows.length + " dong (" + formatCurrency(pStats.totalBalance, false) + ")" },
-      { label: "GD Quy Phu", value: sRows.length + " dong (" + formatCurrency(sStats.totalBalance, false) + ")" }
-    ],
-    15,
-    24
-  );
-
-  var text =
-    "📅 <b>QUẢN TRỊ SỔ CUỐI KỲ (/chotso & /reset)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>\n\n" +
-    "1️⃣ <b>Chốt Sổ Tháng Mới (/chotso):</b> Chuyển toàn bộ giao dịch hiện tại vào bảng <i>Lịch Sử Chốt Sổ</i>, giữ nguyên số dư hiện tại làm Số dư đầu kỳ mới.\n" +
-    "2️⃣ <b>Reset Về 0 (/reset):</b> Chuyển toàn bộ giao dịch hiện tại vào bảng <i>Lịch Sử Chốt Sổ</i> (bảo toàn 100% lịch sử) và đưa số dư hiện tại về 0 đ.";
+  var text = [
+    "📅 <b>QUẢN TRỊ SỔ CUỐI KỲ (/chotso & /reset)</b>",
+    "<blockquote>" +
+      "📘 <b>Quỹ Cá Nhân (/c):</b> " +
+      pRows.length +
+      " dòng (<code>" +
+      escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+      "</code>)\n\n" +
+      "📙 <b>Quỹ Phụ (/lcb):</b> " +
+      sRows.length +
+      " dòng (<code>" +
+      escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+      "</code>)" +
+      "</blockquote>",
+    "1️⃣ <b>Chốt Sổ Tháng Mới (/chotso):</b> Chuyển toàn bộ giao dịch hiện tại vào bảng <i>Lịch Sử Chốt Sổ</i>, giữ nguyên số dư hiện tại làm Số dư đầu kỳ mới.",
+    "2️⃣ <b>Reset Về 0 (/reset):</b> Chuyển toàn bộ giao dịch hiện tại vào bảng <i>Lịch Sử Chốt Sổ</i> (bảo toàn 100% lịch sử) và đưa số dư hiện tại về 0 đ."
+  ].join("\n\n");
 
   return safeSendMessage(chatId, text, {
     reply_markup: {
@@ -3504,8 +3534,10 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
 
   var clean = String(rawText || "").trim();
 
-  // 2. Xử lý các nút bấm cố định trên Reply Keyboard dưới đáy màn hình (hỗ trợ cả bản có icon và không icon)
+  // 2. Xử lý 3 nút bấm cố định trên Reply Keyboard dưới đáy màn hình (kèm tương thích ngược với nhãn nút cũ)
   if (
+    clean === "📱 Mở App Thu Chi (UI Mode)" ||
+    clean === "Mở App Thu Chi (UI Mode)" ||
     clean === "📱 Open UI Mode" ||
     clean === "Open UI Mode" ||
     clean === "/ui" ||
@@ -3514,21 +3546,21 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var uiUrl = getWebAppUiUrl(userId);
     var msgText =
-      "📱 <b>BẢNG ĐIỀU KHIỂN ĐỒ HỌA (OPEN UI MODE)</b>\n\n" +
-      "• Bấm nút <b>📱 Open UI Mode</b> ở bàn phím dưới đáy màn hình hoặc nút bên dưới để mở giao diện 3 Tab (tích hợp Máy tính <code>+ - × ÷</code> và tải Ảnh Bill lên Google Drive).";
+      "📱 <b>BẢNG ĐIỀU KHIỂN ĐỒ HỌA (UI MODE)</b>\n\n" +
+      "Bấm nút <b>📱 Mở App Thu Chi (UI Mode)</b> ở bàn phím dưới đáy màn hình hoặc nút bên dưới để mở giao diện 3 Tab (tích hợp Máy tính <code>+ - × ÷</code> và tải Ảnh Bill lên Google Drive).";
 
     if (uiUrl) {
       safeSendMessage(chatId, msgText, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: "📱 Mở Bảng Điều Khiển (Open UI Mode)", web_app: { url: uiUrl } }]
+            [{ text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }]
           ]
         }
       });
     }
     return safeSendMessage(
       chatId,
-      "✅ Đã cập nhật bàn phím điều khiển nhanh dưới đáy màn hình.",
+      "✅ Đã cập nhật bàn phím 3 nút điều khiển nhanh dưới đáy màn hình.",
       { reply_markup: buildMainReplyKeyboard(userId) }
     );
   }
@@ -3542,7 +3574,12 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     return sendWizardStep1(chatId, null);
   }
 
-  if (clean === "📊 Xem Số Dư" || clean === "Xem Số Dư") {
+  if (
+    clean === "📊 Số Dư" ||
+    clean === "Số Dư" ||
+    clean === "📊 Xem Số Dư" ||
+    clean === "Xem Số Dư"
+  ) {
     setWizardState(chatId, null);
     var balReport = buildBalanceReport();
     return safeSendMessage(chatId, balReport, {
@@ -3551,7 +3588,14 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     });
   }
 
-  if (clean === "📜 5 GD Gần Nhất" || clean === "5 GD Gần Nhất") {
+  if (
+    clean === "📜 Lịch sử" ||
+    clean === "Lịch sử" ||
+    clean === "📜 Lịch Sử" ||
+    clean === "Lịch Sử" ||
+    clean === "📜 5 GD Gần Nhất" ||
+    clean === "5 GD Gần Nhất"
+  ) {
     setWizardState(chatId, null);
     var hisReport = buildRecentHistoryReport(5);
     return safeSendMessage(chatId, hisReport, {
@@ -4108,28 +4152,19 @@ function handleTransactionCommand(mode, argsText, message, chatId, userLabel) {
   var parsedTx = parseTransactionArgs(argsText);
   if (!parsedTx.valid) {
     var cmdName = "/" + mode;
-    var errBox = renderBoxTable(
-      [
-        { label: "Lenh chuan", value: cmdName + " <Bank> [#TAG] <Tien> [Ghi chu]" },
-        { label: "Thu (+)", value: cmdName + " Techcombank #LUONG 15tr" },
-        { label: "Chi (-)", value: cmdName + " Techcombank #TRADA -50k" },
-        { label: "Phep tinh", value: cmdName + " MB #ANUONG -(120k+30k)/3" },
-        { label: "Mac dinh", value: "Khong ghi Bank -> Chung, Tag -> #CHUNG" }
-      ],
-      13,
-      28
-    );
+    var errMsg = [
+      "⚠️ <b>CÚ PHÁP LỆNH " + cmdName.toUpperCase() + " CHƯA ĐÚNG</b>",
+      parsedTx.error,
+      "<blockquote>" +
+        "• <b>Cấu trúc:</b> <code>" + cmdName + " &lt;Bank&gt; [#TAG] &lt;Tiền&gt; [Ghi chú]</code>\n\n" +
+        "• <b>Thu (+):</b> <code>" + cmdName + " Techcombank #LUONG 15tr</code>\n\n" +
+        "• <b>Chi (-):</b> <code>" + cmdName + " Techcombank #TRADA -50k</code>\n\n" +
+        "• <b>Phép tính:</b> <code>" + cmdName + " MB #ANUONG -(120k+30k)/3</code>\n\n" +
+        "• <b>Mặc định:</b> Không ghi Bank -> Chung, Tag -> <code>#CHUNG</code>" +
+        "</blockquote>"
+    ].join("\n\n");
 
-    return safeSendMessage(
-      chatId,
-      "⚠️ <b>CÚ PHÁP LỆNH " +
-        cmdName.toUpperCase() +
-        " CHƯA ĐÚNG</b>\n\n" +
-        parsedTx.error +
-        "\n\n<pre>" +
-        escapeHtml(errBox) +
-        "</pre>"
-    );
+    return safeSendMessage(chatId, errMsg);
   }
 
   // Tự động kiểm tra ảnh Bill từ: (1) Ảnh kèm caption, (2) Reply vào ảnh, hoặc (3) Ảnh vừa gửi trước đó
@@ -4193,66 +4228,40 @@ function dispatchCommand(message) {
     case "/start":
     case "/help":
       var sheetUrl = getProperty("SHEET_URL");
-      var cmdTable = renderBoxTable(
-        [
-          { label: "Open UI Mode", value: "Bang dieu khien do hoa 3 Tab" },
-          { label: "/ghi", value: "Chon nut tung buoc trong Chat" },
-          "SEPARATOR",
-          { label: "/c", value: "Ghi Thu/Chi Quy Ca Nhan" },
-          { label: "/lcb", value: "Ghi Thu/Chi Quy Phu" },
-          { label: "/clcb", value: "Ghi dong thoi ca 2 Quy" },
-          "SEPARATOR",
-          { label: "/sodu", value: "Xem so du (/balance)" },
-          { label: "/ls", value: "5 GD gan nhat (/history)" },
-          { label: "/limit", value: "Dat han muc #Tag" },
-          { label: "/undo", value: "Hoan tac GD vua nhap" },
-          { label: "/chotso", value: "Chot so giu du (/renew)" },
-          { label: "/reset", value: "Luu so & Reset du ve 0" },
-          "SEPARATOR",
-          { label: "/status", value: "Trang thai Bot & Sheet" },
-          { label: "/id", value: "Xem User ID & Chat ID" }
-        ],
-        12,
-        25
-      );
-
-      var syntaxTable = renderBoxTable(
-        [
-          { label: "Cau truc", value: "/c <Bank> [#TAG] <Tien> [Note]" },
-          { label: "Thu (+)", value: "/c Techcombank #LUONG 15tr" },
-          { label: "Chi (-)", value: "/c Techcombank #TRADA -50k" },
-          { label: "Phep tinh", value: "/c MB #ANUONG -(120k+30k)/3" },
-          { label: "Quy phu", value: "/lcb MB #CHO -200k Di cho" },
-          { label: "Ca 2 quy", value: "/clcb CASH #QUATANG -500k" },
-          { label: "Han muc", value: "/limit #TRADA 200k" },
-          { label: "Reset 0", value: "/reset (Luu su & ve 0 het)" }
-        ],
-        11,
-        29
-      );
-
-      var helpMsg =
-        "🚀 <b>SUPER FINANCE GAS BOT  |  v" +
-        escapeHtml(getAppVersion()) +
-        " (HYBRID UI)</b>\n" +
+      var helpBlocks = [
+        "🚀 <b>SUPER FINANCE BOT • v" + escapeHtml(getAppVersion()) + "</b>",
         "Xin chào <b>" +
-        escapeHtml(firstName) +
-        "</b>! Hệ thống hỗ trợ song song cả <b>📱 Giao diện Đồ họa (Open UI Mode)</b>, <b>➕ Nút chọn từng bước</b> và <b>⌨️ Dòng lệnh truyền thống</b>.\n\n" +
-        "📋 <b>1. DANH MỤC TÍNH NĂNG & LỆNH:</b>\n" +
-        "<pre>" +
-        escapeHtml(cmdTable) +
-        "</pre>\n\n" +
-        "🧮 <b>2. VÍ DỤ CÚ PHÁP NHẬP NHANH (HỖ TRỢ + - * /):</b>\n" +
-        "<pre>" +
-        escapeHtml(syntaxTable) +
-        "</pre>\n\n" +
-        "📱 <b>Mở Giao Diện UI:</b> Bấm nút <b>📱 Open UI Mode</b> trên bàn phím cố định ở dưới đáy màn hình.";
+          escapeHtml(firstName) +
+          "</b>! Bạn có thể dùng <b>3 nút bấm bên dưới</b> (<i>Mở App Thu Chi</i>, <i>Số Dư</i>, <i>Lịch sử</i>) hoặc gõ lệnh trực tiếp:",
+        "<blockquote>" +
+          "💼 <b>1. GHI THU / CHI</b>\n\n" +
+          "• <code>/c</code> : Ghi Quỹ Cá Nhân\n\n" +
+          "• <code>/lcb</code> : Ghi Quỹ Phụ\n\n" +
+          "• <code>/clcb</code> : Ghi đồng thời cả 2 Quỹ\n\n" +
+          "• <code>/ghi</code> : Chọn nút từng bước trong Chat" +
+          "</blockquote>",
+        "<blockquote>" +
+          "📊 <b>2. TRA CỨU & QUẢN LÝ SỔ</b>\n\n" +
+          "• <code>/sodu</code> : Xem báo cáo số dư (/balance)\n\n" +
+          "• <code>/ls</code> : Xem 5 giao dịch gần nhất (/history)\n\n" +
+          "• <code>/limit</code> : Đặt hạn mức #Tag\n\n" +
+          "• <code>/undo</code> : Hoàn tác GD vừa nhập\n\n" +
+          "• <code>/chotso</code> • <code>/reset</code> : Chốt sổ / Reset về 0" +
+          "</blockquote>",
+        "<blockquote>" +
+          "🧮 <b>3. VÍ DỤ CÚ PHÁP NHẬP NHANH (HỖ TRỢ + - * /)</b>\n\n" +
+          "• <b>Cấu trúc:</b> <code>/c &lt;Bank&gt; [#TAG] &lt;Tiền&gt; [Note]</code>\n\n" +
+          "• <b>Thu (+):</b> <code>/c Techcombank #LUONG 15tr</code>\n\n" +
+          "• <b>Chi (-):</b> <code>/c Techcombank #TRADA -50k</code>\n\n" +
+          "• <b>Phép tính:</b> <code>/c MB #ANUONG -(120k+30k)/3</code>" +
+          "</blockquote>"
+      ];
 
       if (sheetUrl) {
-        helpMsg += "\n\n📂 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở File Google Sheets của Bot</a>";
+        helpBlocks.push("📊 <a href=\"" + escapeHtml(sheetUrl) + "\">Mở bảng Google Sheets</a>");
       }
 
-      return safeSendMessage(chatId, helpMsg, {
+      return safeSendMessage(chatId, helpBlocks.join("\n\n"), {
         reply_markup: buildMainReplyKeyboard(userId),
         disable_web_page_preview: true
       });
@@ -4269,7 +4278,8 @@ function dispatchCommand(message) {
     case "/undo":
       var undoText = executeUndoTransaction(argsText, null);
       return safeSendMessage(chatId, undoText, {
-        reply_markup: buildMainReplyKeyboard(userId)
+        reply_markup: buildMainReplyKeyboard(userId),
+        disable_web_page_preview: true
       });
 
     case "/sodu":
@@ -4291,7 +4301,8 @@ function dispatchCommand(message) {
     case "/limit":
       var limitRes = handleSetLimitCommand(argsText, userLabel);
       return safeSendMessage(chatId, limitRes, {
-        reply_markup: buildMainReplyKeyboard(userId)
+        reply_markup: buildMainReplyKeyboard(userId),
+        disable_web_page_preview: true
       });
 
     case "/chotso":
@@ -4299,7 +4310,8 @@ function dispatchCommand(message) {
       if (argsText && (argsText.toLowerCase() === "yes" || argsText.toLowerCase() === "confirm")) {
         var doneText = executeRenewPeriod(userLabel);
         return safeSendMessage(chatId, doneText, {
-          reply_markup: buildMainReplyKeyboard(userId)
+          reply_markup: buildMainReplyKeyboard(userId),
+          disable_web_page_preview: true
         });
       }
       var previewObj = buildRenewPreview();
@@ -4317,9 +4329,9 @@ function dispatchCommand(message) {
     case "/ping":
       return safeSendMessage(
         chatId,
-        "🏓 <b>Pong!</b> Bot <b>v" +
+        "🏓 <b>Pong!</b>\n\nBot <b>v" +
           escapeHtml(getAppVersion()) +
-          "</b> đang hoạt động ổn định.\n<i>Chế độ Anti-Reply-Storm & Hybrid UI: Đang bật</i>",
+          "</b> đang hoạt động ổn định.\n\n<i>Chế độ Anti-Reply-Storm & Z Fold UI: Đang bật</i>",
         { reply_markup: buildMainReplyKeyboard(userId) }
       );
 
@@ -4329,7 +4341,7 @@ function dispatchCommand(message) {
         "🆔 <b>THÔNG TIN ĐỊNH DANH CỦA BẠN:</b>\n\n" +
           "• <b>User ID:</b> <code>" +
           userId +
-          "</code>\n" +
+          "</code>\n\n" +
           "• <b>Chat ID:</b> <code>" +
           chatId +
           "</code>",
@@ -4339,27 +4351,21 @@ function dispatchCommand(message) {
     case "/status":
       var cfg = getConfig();
       var driveSt = checkDrivePermissionStatus();
-      var stBox = renderBoxTable(
-        [
-          { label: "Phien ban", value: "v" + cfg.appVersion + " (Hybrid UI)" },
-          { label: "Bot", value: "@" + cfg.botUsername },
-          { label: "Allowed IDs", value: cfg.adminIds },
-          { label: "Cau chi", value: cfg.emergencyStop ? "DANG KHOA" : "Hoat dong" },
-          { label: "Database", value: cfg.sheetId ? "Da ket noi" : "Chua tao" },
-          { label: "Google Drive", value: driveSt.authorized ? "Da cap quyen" : "Chua cap quyen" }
-        ],
-        13,
-        24
-      );
-      var stMsg =
-        "🛡️ <b>TRẠNG THÁI HỆ THỐNG BOT</b>\n\n" +
-        "<pre>" +
-        escapeHtml(stBox) +
-        "</pre>";
+      var stBlocks = [
+        "🛡️ <b>TRẠNG THÁI HỆ THỐNG BOT</b>",
+        "<blockquote>" +
+          "• <b>Phiên bản:</b> v" + escapeHtml(cfg.appVersion) + " (Z Fold UI)\n\n" +
+          "• <b>Bot:</b> @" + escapeHtml(cfg.botUsername) + "\n\n" +
+          "• <b>Allowed IDs:</b> <code>" + escapeHtml(cfg.adminIds) + "</code>\n\n" +
+          "• <b>Cầu chì:</b> " + (cfg.emergencyStop ? "🔴 ĐANG KHÓA" : "🟢 Hoạt động") + "\n\n" +
+          "• <b>Database:</b> " + (cfg.sheetId ? "Đã kết nối" : "Chưa tạo") + "\n\n" +
+          "• <b>Google Drive:</b> " + (driveSt.authorized ? "Đã cấp quyền" : "Chưa cấp quyền") +
+          "</blockquote>"
+      ];
       if (cfg.sheetUrl) {
-        stMsg += "\n\n📂 <a href=\"" + escapeHtml(cfg.sheetUrl) + "\">Mở File Google Sheets</a>";
+        stBlocks.push("📊 <a href=\"" + escapeHtml(cfg.sheetUrl) + "\">Mở bảng Google Sheets</a>");
       }
-      return safeSendMessage(chatId, stMsg, {
+      return safeSendMessage(chatId, stBlocks.join("\n\n"), {
         reply_markup: buildMainReplyKeyboard(userId),
         disable_web_page_preview: true
       });
@@ -4467,5 +4473,4 @@ if (typeof module !== "undefined" && module.exports) {
     handleCallbackQuery: handleCallbackQuery
   };
 }
-
 

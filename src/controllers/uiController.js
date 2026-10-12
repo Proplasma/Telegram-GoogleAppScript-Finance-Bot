@@ -33,22 +33,23 @@ function getWebAppUiUrl(userId) {
 
 /**
  * Tạo cấu trúc Bàn phím cố định dưới đáy màn hình (Persistent Reply Keyboard)
- * Hàng 1 luôn là nút "📱 Open UI Mode" mở trực tiếp Telegram Mini App / Web App
+ * Tối giản 3 nút cho màn hình Samsung Galaxy Z Fold:
+ * 1. "📱 Mở App Thu Chi (UI Mode)" (Mở trực tiếp Telegram Mini App / Web App)
+ * 2. "📊 Số Dư"
+ * 3. "📜 Lịch sử" (Gọi 5 giao dịch gần nhất)
  * @param {string|number} userId
  * @returns {object} reply_markup
  */
 function buildMainReplyKeyboard(userId) {
   var uiUrl = getWebAppUiUrl(userId);
   var openUiButton = uiUrl
-    ? { text: "📱 Open UI Mode", web_app: { url: uiUrl } }
-    : { text: "📱 Open UI Mode" };
+    ? { text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }
+    : { text: "📱 Mở App Thu Chi (UI Mode)" };
 
   return {
     keyboard: [
       [openUiButton],
-      [{ text: "➕ Ghi Thu / Chi" }, { text: "📊 Xem Số Dư" }],
-      [{ text: "📜 5 GD Gần Nhất" }, { text: "↩️ Hoàn Tác (Undo)" }],
-      [{ text: "🎯 Đặt Hạn Mức" }, { text: "📅 Chốt Sổ / Reset" }]
+      [{ text: "📊 Số Dư" }, { text: "📜 Lịch sử" }]
     ],
     resize_keyboard: true,
     is_persistent: true
@@ -385,26 +386,27 @@ function sendWizardStep4(chatId, messageId, tag) {
   state.tag = normalizeTag(tag || state.tag || "#CHUNG");
   setWizardState(chatId, state);
 
-  var dirLabel = state.sign === "-" ? "CHI RA (-)" : "THU VAO (+)";
-  var summaryBox = renderBoxTable(
-    [
-      { label: "Quy ghi chep", value: "/" + state.fund + " (" + dirLabel + ")" },
-      { label: "Ngan hang", value: state.bank },
-      { label: "Phan loai", value: state.tag }
-    ],
-    14,
-    23
-  );
-
-  var text =
-    "🧮 <b>GHI THU / CHI TỪNG BƯỚC (BƯỚC 4/4)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(summaryBox) +
-    "</pre>\n\n" +
-    "✍️ <b>Hãy gõ vào ô chat:</b> <code>&lt;Số tiền hoặc Phép tính&gt; [Ghi chú]</code>\n" +
-    "• Ví dụ 1: <code>55k mua trà đào</code>\n" +
-    "• Ví dụ 2 (Nhân/Chia/Cộng/Trừ): <code>(120k+30k)/3 ăn trưa chia 3</code>\n" +
-    "• 📸 Hoặc gửi <b>Ảnh Bill</b> kèm chú thích số tiền.";
+  var dirLabel = state.sign === "-" ? "🔴 CHI RA (-)" : "🟢 THU VÀO (+)";
+  var text = [
+    "🧮 <b>GHI THU / CHI TỪNG BƯỚC (BƯỚC 4/4)</b>",
+    "<blockquote>" +
+      "• <b>Quỹ ghi chép:</b> <code>/" +
+      escapeHtml(state.fund) +
+      "</code> (" +
+      dirLabel +
+      ")\n\n" +
+      "• <b>Ngân hàng:</b> " +
+      escapeHtml(state.bank) +
+      "\n\n" +
+      "• <b>Phân loại:</b> <code>" +
+      escapeHtml(state.tag) +
+      "</code>" +
+      "</blockquote>",
+    "✍️ <b>Hãy gõ vào ô chat:</b> <code>&lt;Số tiền hoặc Phép tính&gt; [Ghi chú]</code>",
+    "• Ví dụ 1: <code>55k mua trà đào</code>",
+    "• Ví dụ 2 (Nhân/Chia/Cộng/Trừ): <code>(120k+30k)/3 ăn trưa chia 3</code>",
+    "• 📸 Hoặc gửi <b>Ảnh Bill</b> kèm chú thích số tiền."
+  ].join("\n\n");
 
   var rows = [
     [
@@ -465,22 +467,23 @@ function sendClosingMenu(chatId) {
   var pStats = calculateSheetStats(pRows);
   var sStats = calculateSheetStats(sRows);
 
-  var box = renderBoxTable(
-    [
-      { label: "GD Quy Ca Nhan", value: pRows.length + " dong (" + formatCurrency(pStats.totalBalance, false) + ")" },
-      { label: "GD Quy Phu", value: sRows.length + " dong (" + formatCurrency(sStats.totalBalance, false) + ")" }
-    ],
-    15,
-    24
-  );
-
-  var text =
-    "📅 <b>QUẢN TRỊ SỔ CUỐI KỲ (/chotso & /reset)</b>\n\n" +
-    "<pre>" +
-    escapeHtml(box) +
-    "</pre>\n\n" +
-    "1️⃣ <b>Chốt Sổ Tháng Mới (/chotso):</b> Chuyển toàn bộ giao dịch hiện tại vào bảng <i>Lịch Sử Chốt Sổ</i>, giữ nguyên số dư hiện tại làm Số dư đầu kỳ mới.\n" +
-    "2️⃣ <b>Reset Về 0 (/reset):</b> Chuyển toàn bộ giao dịch hiện tại vào bảng <i>Lịch Sử Chốt Sổ</i> (bảo toàn 100% lịch sử) và đưa số dư hiện tại về 0 đ.";
+  var text = [
+    "📅 <b>QUẢN TRỊ SỔ CUỐI KỲ (/chotso & /reset)</b>",
+    "<blockquote>" +
+      "📘 <b>Quỹ Cá Nhân (/c):</b> " +
+      pRows.length +
+      " dòng (<code>" +
+      escapeHtml(formatCurrency(pStats.totalBalance, false)) +
+      "</code>)\n\n" +
+      "📙 <b>Quỹ Phụ (/lcb):</b> " +
+      sRows.length +
+      " dòng (<code>" +
+      escapeHtml(formatCurrency(sStats.totalBalance, false)) +
+      "</code>)" +
+      "</blockquote>",
+    "1️⃣ <b>Chốt Sổ Tháng Mới (/chotso):</b> Chuyển toàn bộ giao dịch hiện tại vào bảng <i>Lịch Sử Chốt Sổ</i>, giữ nguyên số dư hiện tại làm Số dư đầu kỳ mới.",
+    "2️⃣ <b>Reset Về 0 (/reset):</b> Chuyển toàn bộ giao dịch hiện tại vào bảng <i>Lịch Sử Chốt Sổ</i> (bảo toàn 100% lịch sử) và đưa số dư hiện tại về 0 đ."
+  ].join("\n\n");
 
   return safeSendMessage(chatId, text, {
     reply_markup: {
@@ -518,8 +521,10 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
 
   var clean = String(rawText || "").trim();
 
-  // 2. Xử lý các nút bấm cố định trên Reply Keyboard dưới đáy màn hình (hỗ trợ cả bản có icon và không icon)
+  // 2. Xử lý 3 nút bấm cố định trên Reply Keyboard dưới đáy màn hình (kèm tương thích ngược với nhãn nút cũ)
   if (
+    clean === "📱 Mở App Thu Chi (UI Mode)" ||
+    clean === "Mở App Thu Chi (UI Mode)" ||
     clean === "📱 Open UI Mode" ||
     clean === "Open UI Mode" ||
     clean === "/ui" ||
@@ -528,21 +533,21 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var uiUrl = getWebAppUiUrl(userId);
     var msgText =
-      "📱 <b>BẢNG ĐIỀU KHIỂN ĐỒ HỌA (OPEN UI MODE)</b>\n\n" +
-      "• Bấm nút <b>📱 Open UI Mode</b> ở bàn phím dưới đáy màn hình hoặc nút bên dưới để mở giao diện 3 Tab (tích hợp Máy tính <code>+ - × ÷</code> và tải Ảnh Bill lên Google Drive).";
+      "📱 <b>BẢNG ĐIỀU KHIỂN ĐỒ HỌA (UI MODE)</b>\n\n" +
+      "Bấm nút <b>📱 Mở App Thu Chi (UI Mode)</b> ở bàn phím dưới đáy màn hình hoặc nút bên dưới để mở giao diện 3 Tab (tích hợp Máy tính <code>+ - × ÷</code> và tải Ảnh Bill lên Google Drive).";
 
     if (uiUrl) {
       safeSendMessage(chatId, msgText, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: "📱 Mở Bảng Điều Khiển (Open UI Mode)", web_app: { url: uiUrl } }]
+            [{ text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }]
           ]
         }
       });
     }
     return safeSendMessage(
       chatId,
-      "✅ Đã cập nhật bàn phím điều khiển nhanh dưới đáy màn hình.",
+      "✅ Đã cập nhật bàn phím 3 nút điều khiển nhanh dưới đáy màn hình.",
       { reply_markup: buildMainReplyKeyboard(userId) }
     );
   }
@@ -556,7 +561,12 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     return sendWizardStep1(chatId, null);
   }
 
-  if (clean === "📊 Xem Số Dư" || clean === "Xem Số Dư") {
+  if (
+    clean === "📊 Số Dư" ||
+    clean === "Số Dư" ||
+    clean === "📊 Xem Số Dư" ||
+    clean === "Xem Số Dư"
+  ) {
     setWizardState(chatId, null);
     var balReport = buildBalanceReport();
     return safeSendMessage(chatId, balReport, {
@@ -565,7 +575,14 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     });
   }
 
-  if (clean === "📜 5 GD Gần Nhất" || clean === "5 GD Gần Nhất") {
+  if (
+    clean === "📜 Lịch sử" ||
+    clean === "Lịch sử" ||
+    clean === "📜 Lịch Sử" ||
+    clean === "Lịch Sử" ||
+    clean === "📜 5 GD Gần Nhất" ||
+    clean === "5 GD Gần Nhất"
+  ) {
     setWizardState(chatId, null);
     var hisReport = buildRecentHistoryReport(5);
     return safeSendMessage(chatId, hisReport, {

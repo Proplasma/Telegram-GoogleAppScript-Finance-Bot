@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mô Phỏng Giao Diện Telegram Bot (Bản Thoáng Mắt - Z Fold)</title>
+  <style>
+    :root {
+      --bg-page: #0b111e;
+      --bg-panel: #131c2e;
+      --tg-bg: #0e1621;
+      --tg-header: #17212b;
+      --tg-bubble-bot: #182533;
+      --tg-bubble-user: #2b5278;
+      --tg-quote-bg: rgba(255, 255, 255, 0.04);
+      --tg-quote-border: #3b82f6;
+      --tg-quote-subtle-border: #64748b;
+      --tg-code-bg: rgba(84, 169, 235, 0.12);
+      --tg-code-text: #7cc0ff;
+      --tg-link: #58a6ff;
+      --tg-text: #f1f5f9;
+      --tg-subtext: #94a3b8;
+      --tg-btn-bg: rgba(43, 82, 120, 0.45);
+      --tg-btn-hover: rgba(56, 151, 240, 0.35);
+      --tg-reply-kb: #17212b;
+      --tg-reply-btn: #242f3d;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at top, #17233b 0%, #090d16 100%);
+      color: var(--tg-text);
+      min-height: 100vh;
+      padding: 20px 14px 50px;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .top-bar {
+      background: var(--bg-panel);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px 22px;
+      margin-bottom: 20px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    .top-bar h1 {
+      font-size: 1.22rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .top-bar p {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 14px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .ctrl-btn:hover {
+      background: #283548;
+      color: #fff;
+    }
+
+    .ctrl-btn.active {
+      background: linear-gradient(135deg, #2563eb, #0284c7);
+      color: #fff;
+      border-color: #38bdf8;
+    }
+
+    .scenario-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .tab-pill {
+      background: rgba(255, 255, 255, 0.05);
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 7px 13px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    .tab-pill:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .tab-pill.active {
+      background: #10b981;
+      color: #052e16;
+      font-weight: 700;
+      border-color: #34d399;
+    }
+
+    .design-notes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .note-card {
+      background: rgba(19, 28, 46, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      border-radius: 12px;
+      padding: 12px 15px;
+      font-size: 0.83rem;
+      line-height: 1.45;
+    }
+
+    .note-card strong {
+      color: #38bdf8;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.86rem;
+    }
+
+    .showcase-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 28px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .phone-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .phone-label {
+      margin-bottom: 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .label-old {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .label-new {
+      background: rgba(34, 197, 94, 0.15);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+
+    /* Khung máy Samsung Z Fold */
+    .zfold-frame {
+      background: #0e1621;
+      border: 10px solid #1e242d;
+      border-radius: 34px;
+      box-shadow:
+        0 0 0 2px #3b4454,
+        0 22px 50px rgba(0, 0, 0, 0.65);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .zfold-frame.mode-cover {
+      width: 304px;
+      height: 760px;
+    }
+
+    .zfold-frame.mode-main {
+      width: 560px;
+      height: 760px;
+      border-radius: 26px;
+    }
+
+    .status-bar {
+      background: #17212b;
+      padding: 8px 16px 4px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .tg-navbar {
+      background: var(--tg-header);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+    }
+
+    .bot-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #0ea5e9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .bot-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .bot-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bot-status {
+      font-size: 11px;
+      color: #3897f0;
+    }
+
+    .tg-chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 8px;
+      background-color: #0e1621;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0);
+      background-size: 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tg-chat-area::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .tg-chat-area::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    .msg-user {
+      align-self: flex-end;
+      background: var(--tg-bubble-user);
+      color: #fff;
+      padding: 7px 11px;
+      border-radius: 14px 14px 3px 14px;
+      max-width: 86%;
+      font-size: 13px;
+      line-height: 1.4;
+      word-break: break-word;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    }
+
+    .msg-time {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.45);
+      float: right;
+      margin-left: 8px;
+      margin-top: 3px;
+    }
+
+    .bot-msg-group {
+      align-self: flex-start;
+      width: 93%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .msg-bot {
+      background: var(--tg-bubble-bot);
+      color: var(--tg-text);
+      padding: 11px 12px;
+      border-radius: 14px 14px 14px 4px;
+      font-size: 13px;
+      line-height: 1.45;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .msg-bot b {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .msg-bot i {
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    .msg-bot code {
+      font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+      background: var(--tg-code-bg);
+      color: var(--tg-code-text);
+      padding: 1.5px 5px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .msg-bot pre {
+      font-family: "Consolas", "Courier New", monospace;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 7px;
+      padding: 7px 8px;
+      font-size: 11.2px;
+      line-height: 1.35;
+      color: #d1e4ff;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin: 6px 0;
+    }
+
+    .msg-bot blockquote {
+      background: var(--tg-quote-bg);
+      border-left: 3px solid var(--tg-quote-border);
+      border-radius: 4px 8px 8px 4px;
+      padding: 8px 10px;
+      margin: 8px 0;
+      font-size: 12.6px;
+      line-height: 1.45;
+    }
+
+    .msg-bot blockquote.quote-subtle {
+      background: rgba(255, 255, 255, 0.025);
+      border-left-color: var(--tg-quote-subtle-border);
+      color: #cbd5e1;
+    }
+
+    .msg-bot a {
+      color: var(--tg-link);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .msg-bot a:hover {
+      text-decoration: underline;
+    }
+
+    /* Inline Keyboard */
+    .tg-inline-kb {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .tg-inline-row {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tg-inline-btn {
+      flex: 1;
+      background: var(--tg-btn-bg);
+      backdrop-filter: blur(6px);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Persistent Bottom Reply Keyboard */
+    .tg-bottom-bar {
+      background: var(--tg-reply-kb);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 6px 7px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tg-input-mock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0e1621;
+      padding: 6px 11px;
+      border-radius: 18px;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .tg-reply-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .tg-reply-row {
+      display: flex;
+      gap: 5px;
+    }
+
+    .tg-reply-btn {
+      flex: 1;
+      background: var(--tg-reply-btn);
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 9px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    }
+
+    .tg-reply-btn.primary-webapp {
+      background: #2b5278;
+      color: #fff;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- BẢNG ĐIỀU KHIỂN -->
+    <div class="top-bar">
+      <h1>📱 Mô Phỏng Giao Diện Tin Nhắn Bot — Bản Thoáng Mắt Cho Samsung Z Fold</h1>
+      <p>
+        Đã tinh chỉnh theo đúng yêu cầu của bạn: <b>Chèn 1 dòng trắng giữa mỗi dòng thông tin</b>,
+        <b>tối giản phần Hạn mức</b> (bỏ thanh màu lòe loẹt), <b>tách riêng mục Ảnh Hóa Đơn &amp; Link Google Sheets</b>,
+        và <b>thu gọn bàn phím dưới đáy chỉ còn đúng 3 nút</b>.
+      </p>
+
+      <div class="controls-row">
+        <div class="btn-group">
+          <button class="ctrl-btn active" onclick="setScreenMode('compare', this)">
+            ⚖️ So sánh Cũ vs Mới (Màn ngoài Z Fold)
+          </button>
+          <button class="ctrl-btn" onclick="setScreenMode('cover', this)">
+            📱 Chỉ xem Màn Ngoài Z Fold (290px)
+          </button>
+          <button class="ctrl-btn" onclick="setScreenMode('main', this)">
+            📖 Xem Màn Trong Z Fold Mở Rộng (560px)
+          </button>
+        </div>
+      </div>
+
+      <!-- Chọn kịch bản tin nhắn -->
+      <div class="scenario-tabs">
+        <button class="tab-pill active" onclick="setScenario('tx_spend', this)">
+          1. 💸 Ghi Chi Tiêu (/c) + Hạn mức + Bill
+        </button>
+        <button class="tab-pill" onclick="setScenario('tx_clcb', this)">
+          2. ⚡ Ghi Đồng Thời 2 Quỹ (/clcb)
+        </button>
+        <button class="tab-pill" onclick="setScenario('balance', this)">
+          3. 📊 Số Dư (/sodu)
+        </button>
+        <button class="tab-pill" onclick="setScenario('history', this)">
+          4. 📜 Lịch sử (5 GD gần nhất)
+        </button>
+        <button class="tab-pill" onclick="setScenario('closing', this)">
+          5. 📅 Chốt Sổ / Reset &amp; Hoàn Tác
+        </button>
+        <button class="tab-pill" onclick="setScenario('help', this)">
+          6. 🚀 Hướng Dẫn (/start)
+        </button>
+      </div>
+    </div>
+
+    <!-- TÓM TẮT 4 THAY ĐỔI THEO YÊU CẦU -->
+    <div class="design-notes">
+      <div class="note-card">
+        <strong>1. Giãn cách 1 dòng trắng giữa mỗi dòng</strong>
+        Mọi dòng thông tin trong phản hồi của Bot đều cách nhau 1 dòng trống (<code>\n\n</code>), giúp đọc trên màn hình hẹp Z Fold cực kỳ thoáng, không bị dính chữ.
+      </div>
+      <div class="note-card">
+        <strong>2. Hạn mức thanh lịch, bớt lòe loẹt</strong>
+        Đã bỏ dải ô vuông xanh đỏ lòe loẹt. Chỉ hiển thị nhẹ nhàng: <i>Hạn mức</i>, <i>Đã chi</i> và <i>Còn lại</i> với tông màu dịu mắt.
+      </div>
+      <div class="note-card">
+        <strong>3. Tách riêng Ảnh Bill &amp; Google Sheets</strong>
+        Giữ nguyên cụm:<br>
+        <code>📸 ẢNH HÓA ĐƠN (BILL):</code><br>
+        <code>🖼 Mở xem ảnh hóa đơn...</code><br>
+        cách 1 dòng trắng rồi mới tới <code>📊 Mở bảng Google Sheets</code>.
+      </div>
+      <div class="note-card">
+        <strong>4. Bàn phím đáy tinh gọn đúng 3 nút</strong>
+        Chỉ giữ lại 3 nút duy nhất:<br>
+        • <code>Mở App Thu Chi (UI Mode)</code><br>
+        • <code>Số Dư</code> &nbsp;|&nbsp; <code>Lịch sử</code> (5 GD gần nhất).
+      </div>
+    </div>
+
+    <!-- KHU VỰC HIỂN THỊ ĐIỆN THOẠI -->
+    <div class="showcase-grid">
+
+      <!-- ================= CỘT 1: GIAO DIỆN HIỆN TẠI (CŨ) ================= -->
+      <div class="phone-column" id="col-old">
+        <div class="phone-label label-old">❌ Bản Hiện Tại (Chữ dày đặc, vỡ khung, 7 nút)</div>
+        <div class="zfold-frame mode-cover" id="frame-old">
+          <div class="status-bar">
+            <span>20:02</span>
+            <span>5G 📶 🔋 94%</span>
+          </div>
+          <div class="tg-navbar">
+            <div class="bot-avatar">🤖</div>
+            <div class="bot-info">
+              <div class="bot-name">SuperFinanceGAS Bot</div>
+              <div class="bot-status">bot • bản cũ</div>
+            </div>
+          </div>
+
+          <div class="tg-chat-area" id="chat-old"></div>
+
+          <div class="tg-bottom-bar">
+            <div class="tg-input-mock">📎 Nhắn tin...</div>
+            <div class="tg-reply-grid">
+              <div class="tg-reply-row">
+                <div class="tg-reply-btn primary-webapp">📱 Open UI Mode</div>
+              </div>
+              <div class="tg-reply-row">
+                <div class="tg-reply-btn">➕ Ghi Thu / Chi</div>
+                <div class="tg-reply-btn">📊 Xem Số Dư</div>
+              </div>
+              <div class="tg-reply-row">
+                <div class="tg-reply-btn">📜 5 GD Gần Nhất</div>
+                <div class="tg-reply-btn">↩️ Hoàn Tác (Undo)</div>
+              </div>
+              <div class="tg-reply-row">
+                <div class="tg-reply-btn">🎯 Đặt Hạn Mức</div>
+                <div class="tg-reply-btn">📅 Chốt Sổ / Reset</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= CỘT 2: GIAO DIỆN MỚI (THOÁNG MẮT & 3 NÚT) ================= -->
+      <div class="phone-column" id="col-new">
+        <div class="phone-label label-new">✅ Bản Mới (Cách 1 dòng trắng • Đúng 3 nút • Dịu mắt)</div>
+        <div class="zfold-frame mode-cover" id="frame-new">
+          <div class="status-bar">
+            <span>20:02</span>
+            <span>5G 📶 🔋 94%</span>
+          </div>
+          <div class="tg-navbar">
+            <div class="bot-avatar">💎</div>
+            <div class="bot-info">
+              <div class="bot-name">SuperFinanceGAS Bot</div>
+              <div class="bot-status">bot • Z Fold Clean UI</div>
+            </div>
+          </div>
+
+          <div class="tg-chat-area" id="chat-new"></div>
+
+          <!-- BÀN PHÍM ĐÁY CHỈ ĐÚNG 3 NÚT THEO YÊU CẦU -->
+          <div class="tg-bottom-bar">
+            <div class="tg-input-mock">📎 Nhắn tin...</div>
+            <div class="tg-reply-grid">
+              <div class="tg-reply-row">
+                <div class="tg-reply-btn primary-webapp" onclick="alert('Mở Web App Thu Chi 3 Tab')">
+                  📱 Mở App Thu Chi (UI Mode)
+                </div>
+              </div>
+              <div class="tg-reply-row">
+                <div class="tg-reply-btn" onclick="setScenario('balance', document.querySelectorAll('.tab-pill')[2])">
+                  📊 Số Dư
+                </div>
+                <div class="tg-reply-btn" onclick="setScenario('history', document.querySelectorAll('.tab-pill')[3])">
+                  📜 Lịch sử
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const SCENARIOS = {
+      // 1. GHI CHI TIÊU (/c) + HẠN MỨC DỊU MẮT + ẢNH BILL & SHEET TÁCH DÒNG
+      tx_spend: {
+        oldHtml: `
+          <div class="msg-user">/c Techcombank #TRADA -(35k*2+15k) Trà đào cam sả <span class="msg-time">20:02</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              ✅ <b>GHI NHẬN GIAO DỊCH  |  💼 QUỸ CÁ NHÂN (/c)</b><br><br>
+              <pre>┌──────────────────────────────────────────┐
+│ Ma GD           : TX849201               │
+│ Loai GD         : 🔴 CHI RA (-)          │
+├──────────────────────────────────────────┤
+│ Ngan hang       : Techcombank            │
+│ Phan loai       : #TRADA                 │
+│ Bieu thuc       : -(35k*2+15k)           │
+│ So tien         : -85.000 đ              │
+│ Ghi chu         : Trà đào cam sả         │
+├──────────────────────────────────────────┤
+│ Du #TRADA       : -185.000 đ             │
+│ Du Techcombank  : 14.815.000 đ           │
+│ TONG QUY        : 18.450.000 đ           │
+└──────────────────────────────────────────┘</pre>
+              🎯 <b>THEO DÕI HẠN MỨC #TRADA</b><br>
+              <pre>┌─────────────────────────────────────────┐
+│ Han muc       : 200.000 đ               │
+│ Da chi        : 185.000 đ (93%)         │
+│ Con lai       : 15.000 đ                │
+│ Trang thai    : 🟡 Sap cham tran        │
+└─────────────────────────────────────────┘</pre>
+              📸 <b>ẢNH HÓA ĐƠN (BILL):</b><br>
+              <a href="#">🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive</a><br><br>
+              📊 <a href="#">Mở bảng Google Sheets</a>
+            </div>
+            <div class="tg-inline-kb">
+              <div class="tg-inline-row">
+                <button class="tg-inline-btn">↩️ Hoàn tác giao dịch (TX849201)</button>
+              </div>
+            </div>
+          </div>
+        `,
+        newHtml: `
+          <div class="msg-user">/c Techcombank #TRADA -(35k*2+15k) Trà đào cam sả <span class="msg-time">20:02</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              ✅ <b>GHI NHẬN GIAO DỊCH (/c)</b><br><br>
+
+              🔴 <b>Chi ra:</b> <code>-85.000 đ</code><br><br>
+
+              🧮 <b>Phép tính:</b> <code>-(35k*2+15k)</code><br><br>
+
+              🏦 <b>Ngân hàng:</b> Techcombank<br><br>
+
+              🏷️ <b>Phân loại:</b> <code>#TRADA</code><br><br>
+
+              📝 <b>Ghi chú:</b> Trà đào cam sả<br><br>
+
+              🆔 <b>Mã GD:</b> <code>TX849201</code>
+
+              <blockquote>
+                💰 <b>SỐ DƯ SAU GIAO DỊCH</b><br><br>
+                • Dư <code>#TRADA</code>: <b>-185.000 đ</b><br><br>
+                • Dư Techcombank: <b>14.815.000 đ</b><br><br>
+                💎 <b>Tổng Quỹ Cá Nhân:</b> <code>18.450.000 đ</code>
+              </blockquote>
+
+              <blockquote class="quote-subtle">
+                🎯 <b>Hạn mức <code>#TRADA</code>:</b> 200.000 đ<br><br>
+                • Đã chi: 185.000 đ (93%)<br><br>
+                • Còn lại: <b>15.000 đ</b> <i>(Sắp chạm trần)</i>
+              </blockquote>
+
+              📸 <b>ẢNH HÓA ĐƠN (BILL):</b><br>
+              <a href="#">🖼 Mở xem ảnh hóa đơn (Bill) trên Google Drive</a><br><br>
+
+              📊 <a href="#">Mở bảng Google Sheets</a>
+            </div>
+            <div class="tg-inline-kb">
+              <div class="tg-inline-row">
+                <button class="tg-inline-btn">↩️ Hoàn tác giao dịch (TX849201)</button>
+              </div>
+            </div>
+          </div>
+        `
+      },
+
+      // 2. GHI ĐỒNG THỜI 2 QUỸ (/clcb)
+      tx_clcb: {
+        oldHtml: `
+          <div class="msg-user">/clcb MB #TIETKIEM 5tr Gửi tiết kiệm <span class="msg-time">20:03</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              ✅ <b>GHI ĐỒNG THỜI 2 QUỸ  |  ⚡ (/clcb)</b><br><br>
+              <pre>┌──────────────────────────────────────────┐
+│ Ma GD           : TX902114               │
+│ Loai GD         : 🟢 THU VAO (+)         │
+├──────────────────────────────────────────┤
+│ Ngan hang       : MB                     │
+│ Phan loai       : #TIETKIEM              │
+│ Bieu thuc       : 5tr                    │
+│ So tien         : +5.000.000 đ           │
+│ Ghi chu         : Gửi tiết kiệm          │
+├──────────────────────────────────────────┤
+│ Du #TIETKIEM (/c): 15.000.000 đ          │
+│ Du #TIETKIEM (/lcb): 10.000.000 đ        │
+├──────────────────────────────────────────┤
+│ QUY CA NHAN     : 23.450.000 đ           │
+│ QUY PHU         : 12.800.000 đ           │
+└──────────────────────────────────────────┘</pre>
+            </div>
+          </div>
+        `,
+        newHtml: `
+          <div class="msg-user">/clcb MB #TIETKIEM 5tr Gửi tiết kiệm <span class="msg-time">20:03</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              ✅ <b>GHI ĐỒNG THỜI 2 QUỸ (/clcb)</b><br><br>
+
+              🟢 <b>Thu vào:</b> <code>+5.000.000 đ</code><br><br>
+
+              🏦 <b>Ngân hàng:</b> MB<br><br>
+
+              🏷️ <b>Phân loại:</b> <code>#TIETKIEM</code><br><br>
+
+              📝 <b>Ghi chú:</b> Gửi tiết kiệm<br><br>
+
+              🆔 <b>Mã GD:</b> <code>TX902114</code>
+
+              <blockquote>
+                💰 <b>SỐ DƯ SAU GIAO DỊCH</b><br><br>
+                • Dư <code>#TIETKIEM</code> (/c): <b>15.000.000 đ</b><br><br>
+                • Dư <code>#TIETKIEM</code> (/lcb): <b>10.000.000 đ</b><br><br>
+                📘 <b>Tổng Quỹ Cá Nhân:</b> <code>23.450.000 đ</code><br><br>
+                📙 <b>Tổng Quỹ Phụ:</b> <code>12.800.000 đ</code>
+              </blockquote>
+
+              📊 <a href="#">Mở bảng Google Sheets</a>
+            </div>
+            <div class="tg-inline-kb">
+              <div class="tg-inline-row">
+                <button class="tg-inline-btn">↩️ Hoàn tác giao dịch (TX902114)</button>
+              </div>
+            </div>
+          </div>
+        `
+      },
+
+      // 3. BÁO CÁO SỐ DƯ (/sodu)
+      balance: {
+        oldHtml: `
+          <div class="msg-user">📊 Xem Số Dư <span class="msg-time">20:04</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              📊 <b>BÁO CÁO SỐ DƯ TÀI CHÍNH (/sodu)</b><br><br>
+              💰 <b>1. TỔNG QUAN HAI QUỸ:</b>
+              <pre>┌──────────────────────────────────────────┐
+│ QUY CA NHAN     : 18.450.000 đ           │
+│ QUY PHU         : 7.800.000 đ            │
+└──────────────────────────────────────────┘</pre>
+              🏦 <b>2. SỐ DƯ THEO NGÂN HÀNG (QUỸ CÁ NHÂN):</b>
+              <pre>┌──────────────────────────────────────────┐
+│ Techcombank     : 14.815.000 đ           │
+│ MB              : 3.135.000 đ            │
+│ CASH            : 500.000 đ              │
+└──────────────────────────────────────────┘</pre>
+              🏷️ <b>3. SỐ DƯ THEO PHÂN LOẠI #TAG:</b>
+              <pre>┌──────────────────────────────────────────┐
+│ #LUONG          : 20.000.000 đ           │
+│ #ANUONG         : -1.365.000 đ (68% HM)  │
+│ #TRADA          : -185.000 đ (93% HM)    │
+└──────────────────────────────────────────┘</pre>
+            </div>
+          </div>
+        `,
+        newHtml: `
+          <div class="msg-user">📊 Số Dư <span class="msg-time">20:04</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              📊 <b>BÁO CÁO SỐ DƯ TÀI CHÍNH</b>
+
+              <blockquote>
+                💰 <b>1. TỔNG QUAN HAI QUỸ</b><br><br>
+                📘 <b>Quỹ Cá Nhân (/c):</b> <code>18.450.000 đ</code><br><br>
+                📙 <b>Quỹ Phụ (/lcb):</b> <code>7.800.000 đ</code>
+              </blockquote>
+
+              <blockquote>
+                🏦 <b>2. THEO NGÂN HÀNG (QUỸ CÁ NHÂN)</b><br><br>
+                • <b>Techcombank:</b> 14.815.000 đ<br><br>
+                • <b>MB:</b> 3.135.000 đ<br><br>
+                • <b>CASH:</b> 500.000 đ
+              </blockquote>
+
+              <blockquote class="quote-subtle">
+                🏷️ <b>3. THEO PHÂN LOẠI (#TAG)</b><br><br>
+                • <code>#LUONG</code>: <b>20.000.000 đ</b><br><br>
+                • <code>#ANUONG</code>: <b>-1.365.000 đ</b><br>
+                &nbsp;&nbsp;<i>(Hạn mức còn: 635.000 đ)</i><br><br>
+                • <code>#TRADA</code>: <b>-185.000 đ</b><br>
+                &nbsp;&nbsp;<i>(Hạn mức còn: 15.000 đ)</i>
+              </blockquote>
+
+              📊 <a href="#">Mở bảng Google Sheets</a>
+            </div>
+          </div>
+        `
+      },
+
+      // 4. LỊCH SỬ 5 GIAO DỊCH GẦN NHẤT (/ls)
+      history: {
+        oldHtml: `
+          <div class="msg-user">📜 5 GD Gần Nhất <span class="msg-time">20:05</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              📜 <b>LỊCH SỬ 5 GIAO DỊCH GẦN NHẤT (/ls)</b><br><br>
+              --------------------------------<br>
+              📘 <b>1. QUỸ CÁ NHÂN (/c):</b>
+              <pre>┌──────────────────────────────────────────┐
+│ Thoi gian     : 12/10/2026 19:52         │
+│ Ngan hang     : Techcombank | #TRADA     │
+│ So tien       : -85.000 đ                │
+│ Ghi chu       : Trà đào cam sả           │
+└──────────────────────────────────────────┘</pre>
+              🖼 <a href="#">Xem ảnh Bill (TX849201)</a>
+              <pre>┌──────────────────────────────────────────┐
+│ Thoi gian     : 12/10/2026 12:30         │
+│ Ngan hang     : MB | #ANUONG             │
+│ So tien       : -65.000 đ                │
+│ Ghi chu       : Cơm tấm sườn bì          │
+└──────────────────────────────────────────┘</pre>
+            </div>
+          </div>
+        `,
+        newHtml: `
+          <div class="msg-user">📜 Lịch sử <span class="msg-time">20:05</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              📜 <b>5 GIAO DỊCH GẦN NHẤT</b><br><br>
+
+              📘 <b>1. QUỸ CÁ NHÂN (/c)</b>
+
+              <blockquote>
+                🔴 <b><code>-85.000 đ</code></b>  •  <code>#TRADA</code><br><br>
+                🏦 Techcombank  •  🕒 12/10 19:52<br><br>
+                📝 Trà đào cam sả<br><br>
+                🖼 <a href="#">Mở xem ảnh hóa đơn (Bill)</a>
+              </blockquote>
+
+              <blockquote>
+                🔴 <b><code>-65.000 đ</code></b>  •  <code>#ANUONG</code><br><br>
+                🏦 MB  •  🕒 12/10 12:30<br><br>
+                📝 Cơm tấm sườn bì
+              </blockquote>
+
+              <blockquote>
+                🟢 <b><code>+20.000.000 đ</code></b>  •  <code>#LUONG</code><br><br>
+                🏦 Techcombank  •  🕒 10/10 09:00<br><br>
+                📝 Lương tháng 10
+              </blockquote>
+
+              📙 <b>2. QUỸ PHỤ (/lcb)</b>
+
+              <blockquote class="quote-subtle">
+                🔴 <b><code>-200.000 đ</code></b>  •  <code>#CHO</code><br><br>
+                🏦 MB  •  🕒 11/10 17:40<br><br>
+                📝 Đi siêu thị mua rau
+              </blockquote>
+
+              📊 <a href="#">Mở bảng Google Sheets</a>
+            </div>
+          </div>
+        `
+      },
+
+      // 5. CHỐT SỔ / RESET & HOÀN TÁC
+      closing: {
+        oldHtml: `
+          <div class="msg-user">/undo <span class="msg-time">20:06</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              ↩️ <b>ĐÃ HOÀN TÁC (XÓA) GIAO DỊCH THÀNH CÔNG</b><br><br>
+              <pre>┌──────────────────────────────────────────┐
+│ Ma GD xoa       : TX849201               │
+│ Pham vi         : Quy Ca Nhan (/c)       │
+├──────────────────────────────────────────┤
+│ Ngan hang       : Techcombank            │
+│ Phan loai       : #TRADA                 │
+│ So tien xoa     : -85.000 đ              │
+│ Ghi chu         : Trà đào cam sả         │
+├──────────────────────────────────────────┤
+│ Quy Ca Nhan     : 18.535.000 đ           │
+│ Quy Phu         : 7.800.000 đ            │
+└──────────────────────────────────────────┘</pre>
+            </div>
+          </div>
+        `,
+        newHtml: `
+          <div class="msg-user">/undo <span class="msg-time">20:06</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              ↩️ <b>ĐÃ HOÀN TÁC GIAO DỊCH</b><br><br>
+
+              🆔 <b>Mã GD xóa:</b> <code>TX849201</code><br><br>
+
+              📂 <b>Phạm vi:</b> Quỹ Cá Nhân (/c)<br><br>
+
+              🏦 <b>Ngân hàng:</b> Techcombank  •  <code>#TRADA</code><br><br>
+
+              💰 <b>Số tiền xóa:</b> <code>-85.000 đ</code><br><br>
+
+              📝 <b>Ghi chú:</b> Trà đào cam sả
+
+              <blockquote>
+                💎 <b>SỐ DƯ CẬP NHẬT</b><br><br>
+                📘 <b>Quỹ Cá Nhân:</b> <code>18.535.000 đ</code><br><br>
+                📙 <b>Quỹ Phụ:</b> <code>7.800.000 đ</code>
+              </blockquote>
+
+              📊 <a href="#">Mở bảng Google Sheets</a>
+            </div>
+          </div>
+        `
+      },
+
+      // 6. HƯỚNG DẪN (/start)
+      help: {
+        oldHtml: `
+          <div class="msg-user">/start <span class="msg-time">20:07</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              🚀 <b>SUPER FINANCE GAS BOT  |  v2.2.0 (HYBRID UI)</b><br>
+              Xin chào <b>Admin</b>!<br><br>
+              📋 <b>1. DANH MỤC TÍNH NĂNG &amp; LỆNH:</b>
+              <pre>┌────────────────────────────────────────┐
+│ Open UI Mode : Bang dieu khien 3 Tab   │
+│ /ghi         : Chon nut tung buoc      │
+├────────────────────────────────────────┤
+│ /c           : Ghi Thu/Chi Quy Ca Nhan │
+│ /lcb         : Ghi Thu/Chi Quy Phu     │
+│ /clcb        : Ghi dong thoi ca 2 Quy  │
+└────────────────────────────────────────┘</pre>
+            </div>
+          </div>
+        `,
+        newHtml: `
+          <div class="msg-user">/start <span class="msg-time">20:07</span></div>
+          <div class="bot-msg-group">
+            <div class="msg-bot">
+              🚀 <b>SUPER FINANCE BOT • v2.2.0</b><br><br>
+
+              Xin chào <b>Admin</b>! Bạn có thể dùng <b>3 nút bấm bên dưới</b> hoặc gõ lệnh trực tiếp:
+
+              <blockquote>
+                💼 <b>GHI THU / CHI</b><br><br>
+                • <code>/c</code> : Ghi Quỹ Cá Nhân<br><br>
+                • <code>/lcb</code> : Ghi Quỹ Phụ<br><br>
+                • <code>/clcb</code> : Ghi đồng thời cả 2 Quỹ<br><br>
+                • <code>/ghi</code> : Chọn nút từng bước
+              </blockquote>
+
+              <blockquote class="quote-subtle">
+                📊 <b>TRA CỨU &amp; QUẢN LÝ SỔ</b><br><br>
+                • <code>/sodu</code> : Xem báo cáo số dư<br><br>
+                • <code>/ls</code> : Xem 5 giao dịch gần nhất<br><br>
+                • <code>/limit</code> : Đặt hạn mức #Tag<br><br>
+                • <code>/undo</code> : Hoàn tác GD vừa nhập<br><br>
+                • <code>/chotso</code> • <code>/reset</code> : Chốt sổ / Reset về 0
+              </blockquote>
+
+              📊 <a href="#">Mở bảng Google Sheets</a>
+            </div>
+          </div>
+        `
+      }
+    };
+
+    let currentScenario = "tx_spend";
+
+    function renderChat() {
+      const data = SCENARIOS[currentScenario];
+      document.getElementById("chat-old").innerHTML = data.oldHtml;
+      document.getElementById("chat-new").innerHTML = data.newHtml;
+    }
+
+    function setScenario(key, btnEl) {
+      currentScenario = key;
+      document.querySelectorAll(".tab-pill").forEach((b) => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      renderChat();
+    }
+
+    function setScreenMode(mode, btnEl) {
+      document.querySelectorAll(".ctrl-btn").forEach((b) => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+
+      const colOld = document.getElementById("col-old");
+      const frameOld = document.getElementById("frame-old");
+      const frameNew = document.getElementById("frame-new");
+
+      if (mode === "compare") {
+        colOld.classList.remove("hidden");
+        frameOld.className = "zfold-frame mode-cover";
+        frameNew.className = "zfold-frame mode-cover";
+      } else if (mode === "cover") {
+        colOld.classList.add("hidden");
+        frameNew.className = "zfold-frame mode-cover";
+      } else if (mode === "main") {
+        colOld.classList.add("hidden");
+        frameNew.className = "zfold-frame mode-main";
+      }
+    }
+
+    renderChat();
+  </script>
+</body>
+</html>
