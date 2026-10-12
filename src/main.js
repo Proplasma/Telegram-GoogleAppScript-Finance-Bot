@@ -40,9 +40,10 @@ function doGet(e) {
   if (typeof HtmlService !== "undefined" && HtmlService.createTemplateFromFile) {
     try {
       var uid = params.uid || getAdminChatId();
+      var chatId = params.chatId || "";
       var initData =
         typeof getWebAppInitialData === "function"
-          ? getWebAppInitialData(uid)
+          ? getWebAppInitialData(uid, chatId)
           : { ok: true, version: getAppVersion() };
 
       var template = HtmlService.createTemplateFromFile("uiWebApp");

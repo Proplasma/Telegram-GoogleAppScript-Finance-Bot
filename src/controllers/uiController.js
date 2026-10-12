@@ -18,33 +18,44 @@ var DEFAULT_UI_BANKS = ["Techcombank", "MB", "CASH", "Chung"];
 var DEFAULT_UI_TAGS = ["#TRADA", "#ANUONG", "#LUONG", "#DIADIEM", "#CHUNG"];
 
 /**
- * Xây dựng URL mở giao diện "Open UI Mode" kèm định danh người dùng
+ * Xây dựng URL mở giao diện "Open UI Mode" kèm định danh người dùng và Chat ID (hỗ trợ cả Nhóm)
  * @param {string|number} userId
+ * @param {string|number} [chatId]
  * @returns {string}
  */
-function getWebAppUiUrl(userId) {
+function getWebAppUiUrl(userId, chatId) {
   var baseUrl = String(getProperty("WEBAPP_URL") || "").trim();
   if (!baseUrl || baseUrl.indexOf("https://") !== 0) {
     return "";
   }
   var sep = baseUrl.indexOf("?") > -1 ? "&" : "?";
-  return baseUrl + sep + "ui=1&uid=" + encodeURIComponent(String(userId || getAdminChatId()));
+  var url = baseUrl + sep + "ui=1&uid=" + encodeURIComponent(String(userId || getAdminChatId()));
+  if (chatId) {
+    url += "&chatId=" + encodeURIComponent(String(chatId));
+  }
+  return url;
 }
 
 /**
  * Tạo cấu trúc Bàn phím cố định dưới đáy màn hình (Persistent Reply Keyboard)
  * Tối giản 3 nút cho màn hình Samsung Galaxy Z Fold:
- * 1. "📱 Mở App Thu Chi (UI Mode)" (Mở trực tiếp Telegram Mini App / Web App)
+ * 1. "📱 Mở App Thu Chi (UI Mode)" (Ở Chat riêng mở thẳng Mini App; ở Group gửi nút URL mở Web App)
  * 2. "📊 Số Dư"
  * 3. "📜 Lịch sử" (Gọi 5 giao dịch gần nhất)
  * @param {string|number} userId
+ * @param {string|number} [chatId]
  * @returns {object} reply_markup
  */
-function buildMainReplyKeyboard(userId) {
-  var uiUrl = getWebAppUiUrl(userId);
-  var openUiButton = uiUrl
-    ? { text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }
-    : { text: "📱 Mở App Thu Chi (UI Mode)" };
+function buildMainReplyKeyboard(userId, chatId) {
+  var isGroupChat = chatId && Number(chatId) < 0;
+  var uiUrl = getWebAppUiUrl(userId, chatId);
+
+  // Lưu ý quan trọng: Telegram Bot API cấm thuộc tính web_app trên ReplyKeyboard ở trong Group Chat (chatId < 0).
+  // Vì vậy ở trong Nhóm sẽ dùng nút chữ thường, khi bấm vào Bot sẽ gửi nút Inline URL mở App.
+  var openUiButton =
+    !isGroupChat && uiUrl
+      ? { text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }
+      : { text: "📱 Mở App Thu Chi (UI Mode)" };
 
   return {
     keyboard: [
@@ -531,24 +542,28 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     clean === "/menu"
   ) {
     setWizardState(chatId, null);
-    var uiUrl = getWebAppUiUrl(userId);
+    var isGroupChat = chatId && Number(chatId) < 0;
+    var uiUrl = getWebAppUiUrl(userId, chatId);
     var msgText =
       "📱 <b>BẢNG ĐIỀU KHIỂN ĐỒ HỌA (UI MODE)</b>\n\n" +
-      "Bấm nút <b>📱 Mở App Thu Chi (UI Mode)</b> ở bàn phím dưới đáy màn hình hoặc nút bên dưới để mở giao diện 3 Tab (tích hợp Máy tính <code>+ - × ÷</code> và tải Ảnh Bill lên Google Drive).";
+      "Bấm nút <b>📱 Mở App Thu Chi (UI Mode)</b> bên dưới để mở giao diện 3 Tab (tích hợp Máy tính <code>+ - × ÷</code> và tải Ảnh Bill lên Google Drive).";
 
     if (uiUrl) {
-      safeSendMessage(chatId, msgText, {
+      // Ở Group Chat, Telegram yêu cầu dùng nút "url" thay vì "web_app"
+      var inlineBtn = isGroupChat
+        ? { text: "📱 Mở App Thu Chi (UI Mode)", url: uiUrl }
+        : { text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } };
+
+      return safeSendMessage(chatId, msgText, {
         reply_markup: {
-          inline_keyboard: [
-            [{ text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }]
-          ]
+          inline_keyboard: [[inlineBtn]]
         }
       });
     }
     return safeSendMessage(
       chatId,
       "✅ Đã cập nhật bàn phím 3 nút điều khiển nhanh dưới đáy màn hình.",
-      { reply_markup: buildMainReplyKeyboard(userId) }
+      { reply_markup: buildMainReplyKeyboard(userId, chatId) }
     );
   }
 
@@ -570,7 +585,7 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var balReport = buildBalanceReport();
     return safeSendMessage(chatId, balReport, {
-      reply_markup: buildMainReplyKeyboard(userId),
+      reply_markup: buildMainReplyKeyboard(userId, chatId),
       disable_web_page_preview: true
     });
   }
@@ -586,7 +601,7 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var hisReport = buildRecentHistoryReport(5);
     return safeSendMessage(chatId, hisReport, {
-      reply_markup: buildMainReplyKeyboard(userId),
+      reply_markup: buildMainReplyKeyboard(userId, chatId),
       disable_web_page_preview: true
     });
   }
@@ -595,7 +610,7 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var undoText = executeUndoTransaction("", null);
     return safeSendMessage(chatId, undoText, {
-      reply_markup: buildMainReplyKeyboard(userId)
+      reply_markup: buildMainReplyKeyboard(userId, chatId)
     });
   }
 
@@ -653,7 +668,7 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var limitMsg = handleSetLimitCommand(wiz.tag + " " + Math.abs(limAmt), userLabel);
     return safeSendMessage(chatId, limitMsg, {
-      reply_markup: buildMainReplyKeyboard(userId)
+      reply_markup: buildMainReplyKeyboard(userId, chatId)
     });
   }
 
@@ -826,11 +841,13 @@ function handleUiWizardCallback(callbackQuery, data, chatId, userId, userLabel) 
 /**
  * Lấy toàn bộ dữ liệu thực tế từ Google Sheets để hiển thị lên giao diện 3 Tab "Open UI Mode"
  * @param {string|number} [uid]
+ * @param {string|number} [chatId]
  * @returns {object}
  */
-function getWebAppInitialData(uid) {
+function getWebAppInitialData(uid, chatId) {
   var checkId = String(uid || getAdminChatId()).trim();
-  if (!isAuthorizedUser(checkId)) {
+  var checkChatId = String(chatId || "").trim();
+  if (!isAuthorizedUser(checkId) && !isAuthorizedGroup(checkChatId)) {
     return {
       ok: false,
       unauthorized: true,
@@ -890,6 +907,7 @@ function getWebAppInitialData(uid) {
     version: getAppVersion(),
     botUsername: CONFIG.BOT_USERNAME,
     uid: checkId,
+    chatId: checkChatId,
     sheetUrl: getProperty("SHEET_URL") || "",
     banks: meta.banks,
     tags: meta.tags,
@@ -928,7 +946,7 @@ function handleWebAppAction(payload) {
   var uid = String(payload.uid || getAdminChatId()).trim();
   var chatId = String(payload.chatId || uid || getAdminChatId()).trim();
 
-  if (!isAuthorizedUser(uid)) {
+  if (!isAuthorizedUser(uid) && !isAuthorizedGroup(chatId)) {
     return {
       ok: false,
       unauthorized: true,
@@ -941,7 +959,7 @@ function handleWebAppAction(payload) {
 
   try {
     if (action === "get_state") {
-      return getWebAppInitialData(uid);
+      return getWebAppInitialData(uid, chatId);
     }
 
     if (action === "add_bank") {

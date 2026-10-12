@@ -14,6 +14,8 @@ var CONFIG = {
   DEFAULT_ADMIN_CHAT_ID: "YOUR_ADMIN_CHAT_ID_HERE",
   // Danh sách các User ID được phép sử dụng Bot (cách nhau bởi dấu phẩy)
   DEFAULT_ALLOWED_USER_IDS: "YOUR_USER_ID_1, YOUR_USER_ID_2",
+  // Danh sách các Group Chat ID (số âm, VD: -1001234567890) được phép sử dụng Bot
+  DEFAULT_ALLOWED_GROUP_IDS: "",
   // Ngưỡng tuổi tối đa của tin nhắn (giây) để chặn Reply Storm khi bot vừa bật lại
   MAX_MESSAGE_AGE_SECONDS: 180
 };
@@ -43,6 +45,7 @@ function getProperty(key) {
   if (key === "TELEGRAM_BOT_TOKEN") return CONFIG.DEFAULT_BOT_TOKEN;
   if (key === "ADMIN_CHAT_ID") return CONFIG.DEFAULT_ADMIN_CHAT_ID;
   if (key === "ALLOWED_USER_IDS") return CONFIG.DEFAULT_ALLOWED_USER_IDS;
+  if (key === "ALLOWED_GROUP_IDS") return CONFIG.DEFAULT_ALLOWED_GROUP_IDS;
 
   return "";
 }
@@ -148,14 +151,97 @@ function isAdmin(userId) {
 }
 
 /**
+ * Lấy danh sách các Group Chat ID được phép sử dụng Bot (số âm, VD: -1001234567890)
+ * @returns {Array<string>}
+ */
+function getAllowedGroupIds() {
+  var combined =
+    (CONFIG.DEFAULT_ALLOWED_GROUP_IDS || "") +
+    "," +
+    (getProperty("ALLOWED_GROUP_IDS") || "");
+
+  var list = String(combined)
+    .split(",")
+    .map(function (item) {
+      return item.trim();
+    })
+    .filter(Boolean);
+
+  var unique = [];
+  for (var i = 0; i < list.length; i++) {
+    if (unique.indexOf(list[i]) === -1) {
+      unique.push(list[i]);
+    }
+  }
+  return unique;
+}
+
+/**
+ * Kiểm tra xem một Group Chat ID có được cấp phép tương tác với Bot hay không
+ * @param {string|number} chatId
+ * @returns {boolean}
+ */
+function isAuthorizedGroup(chatId) {
+  if (!chatId) return false;
+  var cleanId = String(chatId).trim();
+  if (Number(cleanId) >= 0) return false;
+  var allowedGroups = getAllowedGroupIds();
+  return allowedGroups.indexOf(cleanId) > -1;
+}
+
+/**
+ * Ghi đè (lưu) ID Nhóm được phép tương tác vào thiết lập Bot (ScriptProperties)
+ * @param {string|number} groupChatId
+ * @returns {string}
+ */
+function setAllowedGroupId(groupChatId) {
+  var cleanId = String(groupChatId || "").trim();
+  if (!cleanId) return "";
+  setProperty("ALLOWED_GROUP_IDS", cleanId);
+  return cleanId;
+}
+
+/**
+ * Gỡ quyền một ID Nhóm khỏi thiết lập Bot
+ * @param {string|number} groupChatId
+ * @returns {string}
+ */
+function removeAllowedGroupId(groupChatId) {
+  var cleanId = String(groupChatId || "").trim();
+  var current = getAllowedGroupIds().filter(function (id) {
+    return id !== cleanId;
+  });
+  var updated = current.join(", ");
+  setProperty("ALLOWED_GROUP_IDS", updated);
+  return updated;
+}
+
+/**
+ * Kiểm tra quyền tương tác tổng hợp (hỗ trợ cả Chat riêng 1-1 và Group Chat đã cấp phép):
+ * - Nếu là Group Chat (chatId < 0): Cho phép nếu Group nằm trong ALLOWED_GROUP_IDS.
+ * - Nếu là Chat riêng (chatId > 0): Cho phép nếu User nằm trong ALLOWED_USER_IDS.
+ * @param {string|number} userId
+ * @param {string|number} chatId
+ * @returns {boolean}
+ */
+function isAuthorizedAccess(userId, chatId) {
+  if (chatId && Number(chatId) < 0) {
+    return isAuthorizedGroup(chatId);
+  }
+  return isAuthorizedUser(userId);
+}
+
+/**
  * Lấy toàn bộ cấu hình hệ thống
  */
 function getConfig() {
+  var groups = getAllowedGroupIds();
   return {
     appVersion: getAppVersion(),
     botUsername: CONFIG.BOT_USERNAME,
     token: getBotToken(),
     adminIds: getAllowedUserIds().join(", "),
+    allowedGroupIds: groups.length > 0 ? groups.join(", ") : "Chưa thiết lập",
     sheetId: getProperty("SHEET_ID") || "",
     sheetUrl: getProperty("SHEET_URL") || "",
     webAppUrl: getProperty("WEBAPP_URL") || "",
@@ -175,6 +261,11 @@ if (typeof module !== "undefined" && module.exports) {
   global.getAllowedUserIds = getAllowedUserIds;
   global.isAuthorizedUser = isAuthorizedUser;
   global.isAdmin = isAdmin;
+  global.getAllowedGroupIds = getAllowedGroupIds;
+  global.isAuthorizedGroup = isAuthorizedGroup;
+  global.setAllowedGroupId = setAllowedGroupId;
+  global.removeAllowedGroupId = removeAllowedGroupId;
+  global.isAuthorizedAccess = isAuthorizedAccess;
   global.getConfig = getConfig;
 
   module.exports = {
@@ -188,6 +279,11 @@ if (typeof module !== "undefined" && module.exports) {
     getAllowedUserIds: getAllowedUserIds,
     isAuthorizedUser: isAuthorizedUser,
     isAdmin: isAdmin,
+    getAllowedGroupIds: getAllowedGroupIds,
+    isAuthorizedGroup: isAuthorizedGroup,
+    setAllowedGroupId: setAllowedGroupId,
+    removeAllowedGroupId: removeAllowedGroupId,
+    isAuthorizedAccess: isAuthorizedAccess,
     getConfig: getConfig
   };
 }

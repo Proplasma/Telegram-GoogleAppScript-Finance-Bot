@@ -150,9 +150,10 @@ function doGet(e) {
   if (typeof HtmlService !== "undefined" && HtmlService.createTemplateFromFile) {
     try {
       var uid = params.uid || getAdminChatId();
+      var chatId = params.chatId || "";
       var initData =
         typeof getWebAppInitialData === "function"
-          ? getWebAppInitialData(uid)
+          ? getWebAppInitialData(uid, chatId)
           : { ok: true, version: getAppVersion() };
 
       var template = HtmlService.createTemplateFromFile("uiWebApp");
@@ -274,6 +275,8 @@ var CONFIG = {
   DEFAULT_ADMIN_CHAT_ID: "YOUR_ADMIN_CHAT_ID_HERE",
   // Danh sách các User ID được phép sử dụng Bot (cách nhau bởi dấu phẩy)
   DEFAULT_ALLOWED_USER_IDS: "YOUR_USER_ID_1, YOUR_USER_ID_2",
+  // Danh sách các Group Chat ID (số âm, VD: -1001234567890) được phép sử dụng Bot
+  DEFAULT_ALLOWED_GROUP_IDS: "",
   // Ngưỡng tuổi tối đa của tin nhắn (giây) để chặn Reply Storm khi bot vừa bật lại
   MAX_MESSAGE_AGE_SECONDS: 180
 };
@@ -303,6 +306,7 @@ function getProperty(key) {
   if (key === "TELEGRAM_BOT_TOKEN") return CONFIG.DEFAULT_BOT_TOKEN;
   if (key === "ADMIN_CHAT_ID") return CONFIG.DEFAULT_ADMIN_CHAT_ID;
   if (key === "ALLOWED_USER_IDS") return CONFIG.DEFAULT_ALLOWED_USER_IDS;
+  if (key === "ALLOWED_GROUP_IDS") return CONFIG.DEFAULT_ALLOWED_GROUP_IDS;
 
   return "";
 }
@@ -408,14 +412,97 @@ function isAdmin(userId) {
 }
 
 /**
+ * Lấy danh sách các Group Chat ID được phép sử dụng Bot (số âm, VD: -1001234567890)
+ * @returns {Array<string>}
+ */
+function getAllowedGroupIds() {
+  var combined =
+    (CONFIG.DEFAULT_ALLOWED_GROUP_IDS || "") +
+    "," +
+    (getProperty("ALLOWED_GROUP_IDS") || "");
+
+  var list = String(combined)
+    .split(",")
+    .map(function (item) {
+      return item.trim();
+    })
+    .filter(Boolean);
+
+  var unique = [];
+  for (var i = 0; i < list.length; i++) {
+    if (unique.indexOf(list[i]) === -1) {
+      unique.push(list[i]);
+    }
+  }
+  return unique;
+}
+
+/**
+ * Kiểm tra xem một Group Chat ID có được cấp phép tương tác với Bot hay không
+ * @param {string|number} chatId
+ * @returns {boolean}
+ */
+function isAuthorizedGroup(chatId) {
+  if (!chatId) return false;
+  var cleanId = String(chatId).trim();
+  if (Number(cleanId) >= 0) return false;
+  var allowedGroups = getAllowedGroupIds();
+  return allowedGroups.indexOf(cleanId) > -1;
+}
+
+/**
+ * Ghi đè (lưu) ID Nhóm được phép tương tác vào thiết lập Bot (ScriptProperties)
+ * @param {string|number} groupChatId
+ * @returns {string}
+ */
+function setAllowedGroupId(groupChatId) {
+  var cleanId = String(groupChatId || "").trim();
+  if (!cleanId) return "";
+  setProperty("ALLOWED_GROUP_IDS", cleanId);
+  return cleanId;
+}
+
+/**
+ * Gỡ quyền một ID Nhóm khỏi thiết lập Bot
+ * @param {string|number} groupChatId
+ * @returns {string}
+ */
+function removeAllowedGroupId(groupChatId) {
+  var cleanId = String(groupChatId || "").trim();
+  var current = getAllowedGroupIds().filter(function (id) {
+    return id !== cleanId;
+  });
+  var updated = current.join(", ");
+  setProperty("ALLOWED_GROUP_IDS", updated);
+  return updated;
+}
+
+/**
+ * Kiểm tra quyền tương tác tổng hợp (hỗ trợ cả Chat riêng 1-1 và Group Chat đã cấp phép):
+ * - Nếu là Group Chat (chatId < 0): Cho phép nếu Group nằm trong ALLOWED_GROUP_IDS.
+ * - Nếu là Chat riêng (chatId > 0): Cho phép nếu User nằm trong ALLOWED_USER_IDS.
+ * @param {string|number} userId
+ * @param {string|number} chatId
+ * @returns {boolean}
+ */
+function isAuthorizedAccess(userId, chatId) {
+  if (chatId && Number(chatId) < 0) {
+    return isAuthorizedGroup(chatId);
+  }
+  return isAuthorizedUser(userId);
+}
+
+/**
  * Lấy toàn bộ cấu hình hệ thống
  */
 function getConfig() {
+  var groups = getAllowedGroupIds();
   return {
     appVersion: getAppVersion(),
     botUsername: CONFIG.BOT_USERNAME,
     token: getBotToken(),
     adminIds: getAllowedUserIds().join(", "),
+    allowedGroupIds: groups.length > 0 ? groups.join(", ") : "Chưa thiết lập",
     sheetId: getProperty("SHEET_ID") || "",
     sheetUrl: getProperty("SHEET_URL") || "",
     webAppUrl: getProperty("WEBAPP_URL") || "",
@@ -435,6 +522,11 @@ if (typeof module !== "undefined" && module.exports) {
   global.getAllowedUserIds = getAllowedUserIds;
   global.isAuthorizedUser = isAuthorizedUser;
   global.isAdmin = isAdmin;
+  global.getAllowedGroupIds = getAllowedGroupIds;
+  global.isAuthorizedGroup = isAuthorizedGroup;
+  global.setAllowedGroupId = setAllowedGroupId;
+  global.removeAllowedGroupId = removeAllowedGroupId;
+  global.isAuthorizedAccess = isAuthorizedAccess;
   global.getConfig = getConfig;
 
   module.exports = {
@@ -448,6 +540,11 @@ if (typeof module !== "undefined" && module.exports) {
     getAllowedUserIds: getAllowedUserIds,
     isAuthorizedUser: isAuthorizedUser,
     isAdmin: isAdmin,
+    getAllowedGroupIds: getAllowedGroupIds,
+    isAuthorizedGroup: isAuthorizedGroup,
+    setAllowedGroupId: setAllowedGroupId,
+    removeAllowedGroupId: removeAllowedGroupId,
+    isAuthorizedAccess: isAuthorizedAccess,
     getConfig: getConfig
   };
 }
@@ -3031,33 +3128,44 @@ var DEFAULT_UI_BANKS = ["Techcombank", "MB", "CASH", "Chung"];
 var DEFAULT_UI_TAGS = ["#TRADA", "#ANUONG", "#LUONG", "#DIADIEM", "#CHUNG"];
 
 /**
- * Xây dựng URL mở giao diện "Open UI Mode" kèm định danh người dùng
+ * Xây dựng URL mở giao diện "Open UI Mode" kèm định danh người dùng và Chat ID (hỗ trợ cả Nhóm)
  * @param {string|number} userId
+ * @param {string|number} [chatId]
  * @returns {string}
  */
-function getWebAppUiUrl(userId) {
+function getWebAppUiUrl(userId, chatId) {
   var baseUrl = String(getProperty("WEBAPP_URL") || "").trim();
   if (!baseUrl || baseUrl.indexOf("https://") !== 0) {
     return "";
   }
   var sep = baseUrl.indexOf("?") > -1 ? "&" : "?";
-  return baseUrl + sep + "ui=1&uid=" + encodeURIComponent(String(userId || getAdminChatId()));
+  var url = baseUrl + sep + "ui=1&uid=" + encodeURIComponent(String(userId || getAdminChatId()));
+  if (chatId) {
+    url += "&chatId=" + encodeURIComponent(String(chatId));
+  }
+  return url;
 }
 
 /**
  * Tạo cấu trúc Bàn phím cố định dưới đáy màn hình (Persistent Reply Keyboard)
  * Tối giản 3 nút cho màn hình Samsung Galaxy Z Fold:
- * 1. "📱 Mở App Thu Chi (UI Mode)" (Mở trực tiếp Telegram Mini App / Web App)
+ * 1. "📱 Mở App Thu Chi (UI Mode)" (Ở Chat riêng mở thẳng Mini App; ở Group gửi nút URL mở Web App)
  * 2. "📊 Số Dư"
  * 3. "📜 Lịch sử" (Gọi 5 giao dịch gần nhất)
  * @param {string|number} userId
+ * @param {string|number} [chatId]
  * @returns {object} reply_markup
  */
-function buildMainReplyKeyboard(userId) {
-  var uiUrl = getWebAppUiUrl(userId);
-  var openUiButton = uiUrl
-    ? { text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }
-    : { text: "📱 Mở App Thu Chi (UI Mode)" };
+function buildMainReplyKeyboard(userId, chatId) {
+  var isGroupChat = chatId && Number(chatId) < 0;
+  var uiUrl = getWebAppUiUrl(userId, chatId);
+
+  // Lưu ý quan trọng: Telegram Bot API cấm thuộc tính web_app trên ReplyKeyboard ở trong Group Chat (chatId < 0).
+  // Vì vậy ở trong Nhóm sẽ dùng nút chữ thường, khi bấm vào Bot sẽ gửi nút Inline URL mở App.
+  var openUiButton =
+    !isGroupChat && uiUrl
+      ? { text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }
+      : { text: "📱 Mở App Thu Chi (UI Mode)" };
 
   return {
     keyboard: [
@@ -3544,24 +3652,28 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     clean === "/menu"
   ) {
     setWizardState(chatId, null);
-    var uiUrl = getWebAppUiUrl(userId);
+    var isGroupChat = chatId && Number(chatId) < 0;
+    var uiUrl = getWebAppUiUrl(userId, chatId);
     var msgText =
       "📱 <b>BẢNG ĐIỀU KHIỂN ĐỒ HỌA (UI MODE)</b>\n\n" +
-      "Bấm nút <b>📱 Mở App Thu Chi (UI Mode)</b> ở bàn phím dưới đáy màn hình hoặc nút bên dưới để mở giao diện 3 Tab (tích hợp Máy tính <code>+ - × ÷</code> và tải Ảnh Bill lên Google Drive).";
+      "Bấm nút <b>📱 Mở App Thu Chi (UI Mode)</b> bên dưới để mở giao diện 3 Tab (tích hợp Máy tính <code>+ - × ÷</code> và tải Ảnh Bill lên Google Drive).";
 
     if (uiUrl) {
-      safeSendMessage(chatId, msgText, {
+      // Ở Group Chat, Telegram yêu cầu dùng nút "url" thay vì "web_app"
+      var inlineBtn = isGroupChat
+        ? { text: "📱 Mở App Thu Chi (UI Mode)", url: uiUrl }
+        : { text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } };
+
+      return safeSendMessage(chatId, msgText, {
         reply_markup: {
-          inline_keyboard: [
-            [{ text: "📱 Mở App Thu Chi (UI Mode)", web_app: { url: uiUrl } }]
-          ]
+          inline_keyboard: [[inlineBtn]]
         }
       });
     }
     return safeSendMessage(
       chatId,
       "✅ Đã cập nhật bàn phím 3 nút điều khiển nhanh dưới đáy màn hình.",
-      { reply_markup: buildMainReplyKeyboard(userId) }
+      { reply_markup: buildMainReplyKeyboard(userId, chatId) }
     );
   }
 
@@ -3583,7 +3695,7 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var balReport = buildBalanceReport();
     return safeSendMessage(chatId, balReport, {
-      reply_markup: buildMainReplyKeyboard(userId),
+      reply_markup: buildMainReplyKeyboard(userId, chatId),
       disable_web_page_preview: true
     });
   }
@@ -3599,7 +3711,7 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var hisReport = buildRecentHistoryReport(5);
     return safeSendMessage(chatId, hisReport, {
-      reply_markup: buildMainReplyKeyboard(userId),
+      reply_markup: buildMainReplyKeyboard(userId, chatId),
       disable_web_page_preview: true
     });
   }
@@ -3608,7 +3720,7 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var undoText = executeUndoTransaction("", null);
     return safeSendMessage(chatId, undoText, {
-      reply_markup: buildMainReplyKeyboard(userId)
+      reply_markup: buildMainReplyKeyboard(userId, chatId)
     });
   }
 
@@ -3666,7 +3778,7 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
     setWizardState(chatId, null);
     var limitMsg = handleSetLimitCommand(wiz.tag + " " + Math.abs(limAmt), userLabel);
     return safeSendMessage(chatId, limitMsg, {
-      reply_markup: buildMainReplyKeyboard(userId)
+      reply_markup: buildMainReplyKeyboard(userId, chatId)
     });
   }
 
@@ -3839,11 +3951,13 @@ function handleUiWizardCallback(callbackQuery, data, chatId, userId, userLabel) 
 /**
  * Lấy toàn bộ dữ liệu thực tế từ Google Sheets để hiển thị lên giao diện 3 Tab "Open UI Mode"
  * @param {string|number} [uid]
+ * @param {string|number} [chatId]
  * @returns {object}
  */
-function getWebAppInitialData(uid) {
+function getWebAppInitialData(uid, chatId) {
   var checkId = String(uid || getAdminChatId()).trim();
-  if (!isAuthorizedUser(checkId)) {
+  var checkChatId = String(chatId || "").trim();
+  if (!isAuthorizedUser(checkId) && !isAuthorizedGroup(checkChatId)) {
     return {
       ok: false,
       unauthorized: true,
@@ -3903,6 +4017,7 @@ function getWebAppInitialData(uid) {
     version: getAppVersion(),
     botUsername: CONFIG.BOT_USERNAME,
     uid: checkId,
+    chatId: checkChatId,
     sheetUrl: getProperty("SHEET_URL") || "",
     banks: meta.banks,
     tags: meta.tags,
@@ -3941,7 +4056,7 @@ function handleWebAppAction(payload) {
   var uid = String(payload.uid || getAdminChatId()).trim();
   var chatId = String(payload.chatId || uid || getAdminChatId()).trim();
 
-  if (!isAuthorizedUser(uid)) {
+  if (!isAuthorizedUser(uid) && !isAuthorizedGroup(chatId)) {
     return {
       ok: false,
       unauthorized: true,
@@ -3954,7 +4069,7 @@ function handleWebAppAction(payload) {
 
   try {
     if (action === "get_state") {
-      return getWebAppInitialData(uid);
+      return getWebAppInitialData(uid, chatId);
     }
 
     if (action === "add_bank") {
@@ -4185,19 +4300,30 @@ function dispatchCommand(message) {
   if (!message || !message.chat) return null;
 
   var chatId = message.chat.id;
+  var isGroupChat = Number(chatId) < 0;
+  var groupTitle = message.chat.title || "Nhóm Telegram";
   var userId = message.from ? message.from.id : chatId;
   var firstName = message.from ? message.from.first_name || "User" : "User";
   var userLabel = firstName + " (" + userId + ")";
 
-  // 1. KIỂM TRA PHÂN QUYỀN TÀI KHOẢN (MULTI-USER WHITELIST)
-  // Nếu không thuộc danh sách ALLOWED_USER_IDS -> Trả về "Bot <Tên Phiên bản> Loading..."
-  if (!isAuthorizedUser(userId)) {
-    Logger.log("[Auth] Chan truy cap tu tai khoan khong duoc phep: " + userLabel);
-    return sendMessage(chatId, getUnauthorizedMessage());
-  }
-
   // Hỗ trợ đọc lệnh từ cả tin nhắn chữ (message.text) và chú thích ảnh Bill (message.caption)
   var rawText = String(message.text || message.caption || "").trim();
+  var firstToken = rawText ? rawText.split(/\s+/)[0].split("@")[0].toLowerCase() : "";
+
+  // 1. KIỂM TRA PHÂN QUYỀN TÀI KHOẢN & NHÓM (MULTI-USER & ALLOWED_GROUP_IDS)
+  // Đặc quyền: Tài khoản Admin (trong ALLOWED_USER_IDS) luôn được phép gõ /id hoặc /setgroup ở bất kỳ Nhóm nào
+  // để lấy ID Nhóm và bấm nút ghi đè vào thiết lập Bot ngay trên Telegram.
+  var isAdminCaller = isAuthorizedUser(userId);
+  var isGroupSetupCmd = isGroupChat && isAdminCaller && (firstToken === "/id" || firstToken === "/setgroup");
+
+  if (!isGroupSetupCmd && !isAuthorizedAccess(userId, chatId)) {
+    // Nếu ở trong Nhóm chưa cấp phép và chỉ là tin nhắn tán gẫu bình thường -> bỏ qua im lặng
+    if (isGroupChat && (!rawText || rawText.charAt(0) !== "/")) {
+      return null;
+    }
+    Logger.log("[Auth] Chan truy cap tu chat/user khong duoc phep: " + userLabel + " | chatId=" + chatId);
+    return sendMessage(chatId, getUnauthorizedMessage());
+  }
 
   // 2. KIỂM TRA CÁC NÚT BẤM TRÊN BÀN PHÍM ĐÁY MÀN HÌNH HOẶC LUỒNG WIZARD 4 BƯỚC
   if (typeof handleUiReplyKeyboardOrWizard === "function") {
@@ -4246,7 +4372,8 @@ function dispatchCommand(message) {
           "• <code>/ls</code> : Xem 5 giao dịch gần nhất (/history)\n\n" +
           "• <code>/limit</code> : Đặt hạn mức #Tag\n\n" +
           "• <code>/undo</code> : Hoàn tác GD vừa nhập\n\n" +
-          "• <code>/chotso</code> • <code>/reset</code> : Chốt sổ / Reset về 0" +
+          "• <code>/chotso</code> • <code>/reset</code> : Chốt sổ / Reset về 0\n\n" +
+          "• <code>/id</code> • <code>/setgroup</code> : Lấy ID & Cấp phép Nhóm" +
           "</blockquote>",
         "<blockquote>" +
           "🧮 <b>3. VÍ DỤ CÚ PHÁP NHẬP NHANH (HỖ TRỢ + - * /)</b>\n\n" +
@@ -4262,7 +4389,7 @@ function dispatchCommand(message) {
       }
 
       return safeSendMessage(chatId, helpBlocks.join("\n\n"), {
-        reply_markup: buildMainReplyKeyboard(userId),
+        reply_markup: buildMainReplyKeyboard(userId, chatId),
         disable_web_page_preview: true
       });
 
@@ -4278,7 +4405,7 @@ function dispatchCommand(message) {
     case "/undo":
       var undoText = executeUndoTransaction(argsText, null);
       return safeSendMessage(chatId, undoText, {
-        reply_markup: buildMainReplyKeyboard(userId),
+        reply_markup: buildMainReplyKeyboard(userId, chatId),
         disable_web_page_preview: true
       });
 
@@ -4286,7 +4413,7 @@ function dispatchCommand(message) {
     case "/balance":
       var balReport = buildBalanceReport();
       return safeSendMessage(chatId, balReport, {
-        reply_markup: buildMainReplyKeyboard(userId),
+        reply_markup: buildMainReplyKeyboard(userId, chatId),
         disable_web_page_preview: true
       });
 
@@ -4294,14 +4421,14 @@ function dispatchCommand(message) {
     case "/history":
       var hisReport = buildRecentHistoryReport(5);
       return safeSendMessage(chatId, hisReport, {
-        reply_markup: buildMainReplyKeyboard(userId),
+        reply_markup: buildMainReplyKeyboard(userId, chatId),
         disable_web_page_preview: true
       });
 
     case "/limit":
       var limitRes = handleSetLimitCommand(argsText, userLabel);
       return safeSendMessage(chatId, limitRes, {
-        reply_markup: buildMainReplyKeyboard(userId),
+        reply_markup: buildMainReplyKeyboard(userId, chatId),
         disable_web_page_preview: true
       });
 
@@ -4310,7 +4437,7 @@ function dispatchCommand(message) {
       if (argsText && (argsText.toLowerCase() === "yes" || argsText.toLowerCase() === "confirm")) {
         var doneText = executeRenewPeriod(userLabel);
         return safeSendMessage(chatId, doneText, {
-          reply_markup: buildMainReplyKeyboard(userId),
+          reply_markup: buildMainReplyKeyboard(userId, chatId),
           disable_web_page_preview: true
         });
       }
@@ -4322,7 +4449,7 @@ function dispatchCommand(message) {
     case "/reset":
       var resetResultText = executeResetAllToZero(userLabel);
       return safeSendMessage(chatId, resetResultText, {
-        reply_markup: buildMainReplyKeyboard(userId),
+        reply_markup: buildMainReplyKeyboard(userId, chatId),
         disable_web_page_preview: true
       });
 
@@ -4332,10 +4459,78 @@ function dispatchCommand(message) {
         "🏓 <b>Pong!</b>\n\nBot <b>v" +
           escapeHtml(getAppVersion()) +
           "</b> đang hoạt động ổn định.\n\n<i>Chế độ Anti-Reply-Storm & Z Fold UI: Đang bật</i>",
-        { reply_markup: buildMainReplyKeyboard(userId) }
+        { reply_markup: buildMainReplyKeyboard(userId, chatId) }
+      );
+
+    case "/setgroup":
+      if (!isGroupChat) {
+        return safeSendMessage(
+          chatId,
+          "⚠️ Lệnh <code>/setgroup</code> chỉ dùng ở trong <b>Nhóm Telegram</b> để ghi đè ID Nhóm vào thiết lập Bot.\n\nHãy thêm Bot vào Nhóm, cấp quyền Admin rồi gõ <code>/setgroup</code> hoặc <code>/id</code> tại Nhóm đó.",
+          { reply_markup: buildMainReplyKeyboard(userId, chatId) }
+        );
+      }
+      if (!isAdminCaller) {
+        return safeSendMessage(chatId, getUnauthorizedMessage());
+      }
+      setAllowedGroupId(chatId);
+      return safeSendMessage(
+        chatId,
+        [
+          "✅ <b>ĐÃ CẤP PHÉP & GHI ĐÈ ID NHÓM VÀO BOT</b>",
+          "<blockquote>" +
+            "• <b>Tên Nhóm:</b> " + escapeHtml(groupTitle) + "\n\n" +
+            "• <b>Group ID:</b> <code>" + chatId + "</code>\n\n" +
+            "• <b>Trạng thái:</b> 🟢 Đã kích hoạt cho toàn bộ thành viên trong Nhóm" +
+            "</blockquote>",
+          "👇 Bàn phím 3 nút điều khiển nhanh dưới đáy màn hình đã sẵn sàng!"
+        ].join("\n\n"),
+        { reply_markup: buildMainReplyKeyboard(userId, chatId) }
       );
 
     case "/id":
+      if (isGroupChat) {
+        var groupAuthorized = isAuthorizedGroup(chatId);
+        var idGroupBlocks = [
+          "🆔 <b>THÔNG TIN ĐỊNH DANH & NHÓM</b>",
+          "<blockquote>" +
+            "• <b>Tên Nhóm:</b> " + escapeHtml(groupTitle) + "\n\n" +
+            "• <b>Group ID (Chat ID):</b> <code>" + chatId + "</code>\n\n" +
+            "• <b>User ID của bạn:</b> <code>" + userId + "</code>\n\n" +
+            "• <b>Trạng thái Nhóm:</b> " +
+            (groupAuthorized ? "🟢 Đã được cấp phép" : "🔴 Chưa cấp phép") +
+            "</blockquote>"
+        ];
+
+        if (isAdminCaller) {
+          idGroupBlocks.push(
+            "💡 <i>Bấm nút bên dưới để ghi đè mã Group ID này vào thiết lập Bot ngay lập tức:</i>"
+          );
+          return safeSendMessage(chatId, idGroupBlocks.join("\n\n"), {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "✅ Cấp phép & Ghi đè ID Nhóm này vào Bot",
+                    callback_data: "group_auth:set:" + chatId
+                  }
+                ],
+                [
+                  {
+                    text: "🚫 Gỡ quyền Nhóm này",
+                    callback_data: "group_auth:remove:" + chatId
+                  }
+                ]
+              ]
+            }
+          });
+        }
+
+        return safeSendMessage(chatId, idGroupBlocks.join("\n\n"), {
+          reply_markup: buildMainReplyKeyboard(userId, chatId)
+        });
+      }
+
       return safeSendMessage(
         chatId,
         "🆔 <b>THÔNG TIN ĐỊNH DANH CỦA BẠN:</b>\n\n" +
@@ -4344,8 +4539,11 @@ function dispatchCommand(message) {
           "</code>\n\n" +
           "• <b>Chat ID:</b> <code>" +
           chatId +
+          "</code>\n\n" +
+          "• <b>Group ID đã cấp phép:</b> <code>" +
+          escapeHtml(getConfig().allowedGroupIds) +
           "</code>",
-        { reply_markup: buildMainReplyKeyboard(userId) }
+        { reply_markup: buildMainReplyKeyboard(userId, chatId) }
       );
 
     case "/status":
@@ -4356,7 +4554,8 @@ function dispatchCommand(message) {
         "<blockquote>" +
           "• <b>Phiên bản:</b> v" + escapeHtml(cfg.appVersion) + " (Z Fold UI)\n\n" +
           "• <b>Bot:</b> @" + escapeHtml(cfg.botUsername) + "\n\n" +
-          "• <b>Allowed IDs:</b> <code>" + escapeHtml(cfg.adminIds) + "</code>\n\n" +
+          "• <b>Allowed Users:</b> <code>" + escapeHtml(cfg.adminIds) + "</code>\n\n" +
+          "• <b>Allowed Groups:</b> <code>" + escapeHtml(cfg.allowedGroupIds) + "</code>\n\n" +
           "• <b>Cầu chì:</b> " + (cfg.emergencyStop ? "🔴 ĐANG KHÓA" : "🟢 Hoạt động") + "\n\n" +
           "• <b>Database:</b> " + (cfg.sheetId ? "Đã kết nối" : "Chưa tạo") + "\n\n" +
           "• <b>Google Drive:</b> " + (driveSt.authorized ? "Đã cấp quyền" : "Chưa cấp quyền") +
@@ -4366,7 +4565,7 @@ function dispatchCommand(message) {
         stBlocks.push("📊 <a href=\"" + escapeHtml(cfg.sheetUrl) + "\">Mở bảng Google Sheets</a>");
       }
       return safeSendMessage(chatId, stBlocks.join("\n\n"), {
-        reply_markup: buildMainReplyKeyboard(userId),
+        reply_markup: buildMainReplyKeyboard(userId, chatId),
         disable_web_page_preview: true
       });
 
@@ -4383,14 +4582,14 @@ function dispatchCommand(message) {
         chatId,
         "⚠️ Lệnh <code>" +
           escapeHtml(command) +
-          "</code> chưa được hỗ trợ.\nGõ /help hoặc bấm các nút dưới đáy màn hình để thao tác.",
-        { reply_markup: buildMainReplyKeyboard(userId) }
+          "</code> chưa được hỗ trợ.\n\nGõ /help hoặc bấm các nút dưới đáy màn hình để thao tác.",
+        { reply_markup: buildMainReplyKeyboard(userId, chatId) }
       );
   }
 }
 
 /**
- * Xử lý sự kiện bấm nút Inline Keyboard (Hoàn tác giao dịch / Xác nhận chốt sổ / Wizard 4 bước)
+ * Xử lý sự kiện bấm nút Inline Keyboard (Hoàn tác giao dịch / Xác nhận chốt sổ / Cấp phép Nhóm / Wizard 4 bước)
  * @param {object} callbackQuery
  */
 function handleCallbackQuery(callbackQuery) {
@@ -4405,8 +4604,61 @@ function handleCallbackQuery(callbackQuery) {
       ? callbackQuery.message.chat.id
       : userId;
 
-  // Kiểm tra quyền truy cập
-  if (!isAuthorizedUser(userId)) {
+  var data = String(callbackQuery.data || "");
+
+  // Xử lý nút Cấp phép / Gỡ quyền Nhóm ("group_auth:set:<groupId>" | "group_auth:remove:<groupId>")
+  // Chỉ tài khoản Admin trong ALLOWED_USER_IDS mới được bấm nút này
+  if (data.indexOf("group_auth:") === 0) {
+    if (!isAuthorizedUser(userId)) {
+      callTelegramApi("answerCallbackQuery", {
+        callback_query_id: callbackQuery.id,
+        text: "⚠️ Chỉ Admin mới có quyền cấp phép Nhóm!",
+        show_alert: true
+      });
+      return null;
+    }
+
+    var gParts = data.split(":");
+    var gAction = gParts[1] || "";
+    var targetGroupId = gParts[2] || String(chatId);
+
+    if (gAction === "set") {
+      setAllowedGroupId(targetGroupId);
+      callTelegramApi("answerCallbackQuery", {
+        callback_query_id: callbackQuery.id,
+        text: "✅ Đã lưu đè ID Nhóm (" + targetGroupId + ") vào thiết lập Bot!"
+      });
+      return safeSendMessage(
+        chatId,
+        [
+          "✅ <b>ĐÃ CẤP PHÉP & GHI ĐÈ ID NHÓM VÀO BOT</b>",
+          "<blockquote>" +
+            "• <b>Group ID đã lưu:</b> <code>" + escapeHtml(targetGroupId) + "</code>\n\n" +
+            "• <b>Trạng thái:</b> 🟢 Nhóm đã được kích hoạt toàn quyền" +
+            "</blockquote>",
+          "👇 Bây giờ mọi thành viên trong Nhóm đều có thể gõ lệnh hoặc dùng 3 nút dưới đáy màn hình!"
+        ].join("\n\n"),
+        { reply_markup: buildMainReplyKeyboard(userId, chatId) }
+      );
+    }
+
+    if (gAction === "remove") {
+      removeAllowedGroupId(targetGroupId);
+      callTelegramApi("answerCallbackQuery", {
+        callback_query_id: callbackQuery.id,
+        text: "🚫 Đã gỡ quyền Nhóm (" + targetGroupId + ") khỏi thiết lập Bot!"
+      });
+      return safeSendMessage(
+        chatId,
+        "🚫 <b>ĐÃ GỠ QUYỀN NHÓM KHỎI THIẾT LẬP BOT</b>\n\nGroup ID <code>" +
+          escapeHtml(targetGroupId) +
+          "</code> đã bị xóa khỏi danh sách <code>ALLOWED_GROUP_IDS</code>."
+      );
+    }
+  }
+
+  // Kiểm tra quyền truy cập chung (User nằm trong ALLOWED_USER_IDS hoặc đang ở trong Group đã cấp phép)
+  if (!isAuthorizedAccess(userId, chatId) && !isAuthorizedUser(userId)) {
     callTelegramApi("answerCallbackQuery", {
       callback_query_id: callbackQuery.id,
       text: getUnauthorizedMessage(),
@@ -4414,8 +4666,6 @@ function handleCallbackQuery(callbackQuery) {
     });
     return null;
   }
-
-  var data = String(callbackQuery.data || "");
 
   // 0. Chuyển tiếp các sự kiện thuộc In-Chat Wizard hoặc xác nhận Reset
   if (typeof handleUiWizardCallback === "function") {
