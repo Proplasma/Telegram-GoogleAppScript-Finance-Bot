@@ -18,9 +18,9 @@ flowchart TD
     U2 -- "POST Webhook Update" --> DOPOST["doPost(e) -> Security Guard (3 Tầng)"]
     U3 -- "POST Webhook Update" --> DOPOST
 
-    DOPOST --> AUTH{"Kiểm tra ALLOWED_USER_IDS"}
+    DOPOST --> AUTH{"Kiểm tra ALLOWED_USER_IDS & ALLOWED_GROUP_IDS"}
     AUTH -- "Không hợp lệ" --> BLOCK["Trả về: Bot 2.2.0 Loading..."]
-    AUTH -- "Hợp lệ" --> ROUTER["uiController.js & commandController.js"]
+    AUTH -- "Hợp lệ (hoặc lệnh /id, /setgroup của Admin)" --> ROUTER["uiController.js & commandController.js"]
 
     DOGET --> SERVICE["financeService.js + financeParser.js (+ - * / ngoặc đơn)"]
     ROUTER --> SERVICE
@@ -47,17 +47,17 @@ flowchart TD
 
 1. **`src/F1ActivateBot.js`**:
    - Nằm ở vị trí đầu tiên trên Google Apps Script Editor.
-   - Chứa `ActivateBot()`, `setupEnvironment()` (nơi điền `WEBAPP_URL`, `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_IDS`) và `setWebhook()`.
+   - Chứa hướng dẫn 3 bước thêm Bot vào Nhóm Telegram, cùng các hàm `ActivateBot()`, `setupEnvironment()` (nơi điền `WEBAPP_URL`, `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_IDS`, `ALLOWED_GROUP_IDS`) và `setWebhook()`.
 2. **`src/GrantAllPermission.js`**:
    - Nằm ở vị trí số 2 trên Google Apps Script Editor.
    - Chứa `GrantAllPermissions()` gọi đồng thời 7 nhóm dịch vụ (`PropertiesService`, `CacheService`, `DriveApp`, `SpreadsheetApp`, `UrlFetchApp`, `ScriptApp`, `HtmlService`, `LanguageApp`) để xin cấp quyền 1 lần duy nhất.
 3. **`src/main.js`**:
-   - Điểm tiếp nhận `doGet(e)` (phục vụ giao diện đồ họa `uiWebApp.html` hoặc trả về trạng thái JSON khi truyền `?format=json`) và `doPost(e)` (tiếp nhận Telegram Webhook).
+   - Điểm tiếp nhận `doGet(e)` (phục vụ giao diện đồ họa `uiWebApp.html` hoặc trả về trạng thái JSON khi truyền `?format=json`) và `doPost(e)` (tiếp nhận Telegram Webhook, kiểm tra `isAuthorizedInteraction(userId, chatId)` và cho phép lệnh `/id`, `/setgroup` của Admin đi qua để cấp quyền nhóm).
    - Hàm `finishResponse()` trả về `HtmlService.createHtmlOutput("OK")` để ngăn lỗi `302 Found Redirect`.
 4. **`src/uiWebApp.html`**:
    - Giao diện đồ họa 3 Tab của chế độ **Open UI Mode** với máy tính đầy đủ phép toán (`+`, `-`, `*`, `/`, `( )`), thanh cuộn dọc tùy chỉnh và trình tải ảnh hóa đơn Base64.
 5. **`src/core/config.js`**:
-   - Quản lý biến cấu hình, hằng số `APP_VERSION = "2.2.0"`, danh sách `ALLOWED_USER_IDS` và hàm kiểm tra quyền `isAuthorizedUser(userId)`.
+   - Quản lý biến cấu hình, hằng số `APP_VERSION = "2.2.0"`, danh sách `ALLOWED_USER_IDS`, `ALLOWED_GROUP_IDS` và các hàm kiểm tra/ghi đè quyền (`isAuthorizedUser`, `isAuthorizedGroup`, `isAuthorizedInteraction`, `setAllowedGroupIds`).
 6. **`src/core/securityGuard.js`**:
    - Chứa `verifyWebhookSafety(updateData)`, `EmergencyStop()`, `ResumeBot()`.
 7. **`src/core/financeParser.js`**:
@@ -69,11 +69,11 @@ flowchart TD
 10. **`src/services/sheetService.js`**:
     - Tự động khởi tạo file Google Spreadsheet 5 bảng và thực thi lưu sổ liên thông qua `archiveTransactionsToHistorySheet()`.
 11. **`src/services/financeService.js`**:
-    - Xử lý toàn bộ nghiệp vụ tính toán số dư, hạn mức, hoàn tác, chốt sổ, reset và định dạng biên lai.
+    - Xử lý toàn bộ nghiệp vụ tính toán số dư, hạn mức, hoàn tác, chốt sổ, reset và định dạng biên lai tối ưu màn hình hẹp (Z Fold).
 12. **`src/controllers/uiController.js`**:
-    - Quản lý bàn phím cố định (`buildMainReplyKeyboard`), luồng chọn nút 4 bước trong chat (`sendWizardStep1..4`) và các hàm Backend API cho Web App (`getWebAppInitialData`, `handleWebAppAction`).
+    - Quản lý bàn phím cố định 3 nút (`buildMainReplyKeyboard(userId, chatId)` tự động tương thích Group Chat khi `chatId < 0`), luồng chọn nút 4 bước trong chat (`sendWizardStep1..4`) và các hàm Backend API cho Web App (`getWebAppInitialData`, `handleWebAppAction`).
 13. **`src/controllers/commandController.js`**:
-    - Điều phối toàn bộ các lệnh bắt đầu bằng `/` và các sự kiện nút bấm Inline (`handleCallbackQuery`).
+    - Điều phối toàn bộ các lệnh bắt đầu bằng `/` (bao gồm `/id`, `/setgroup`), và các sự kiện nút bấm Inline (`handleCallbackQuery`, `handleGroupAuthCallback` cấp quyền nhóm 1 chạm).
 
 ---
 

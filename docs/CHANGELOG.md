@@ -12,6 +12,10 @@
   - Tối giản hóa khung hiển thị Hạn mức (`🎯 Hạn mức #Tag`, `• Đã chi`, `• Còn lại`), tách riêng mục `📸 ẢNH HÓA ĐƠN (BILL)` và `📊 Mở bảng Google Sheets` cách nhau 1 dòng trắng.
 - **Nâng cấp Bộ phân tích Biểu thức Toán học (`src/core/financeParser.js`):**
   - Bổ sung bộ phân tích đệ quy (Recursive Descent Parser) hỗ trợ đầy đủ 4 phép tính Cộng (`+`), Trừ (`-`), Nhân (`*`, `×`), Chia (`/`, `÷`), Ngoặc đơn `( )` và các đơn vị tiền tệ viết tắt (`k`, `tr`, `1tr5`) trên cả bàn phím máy tính UI và câu lệnh chat.
+- **Tự động Lấy Thông tin Nhóm & Cấp quyền Nhóm Chat 1 Chạm (`ALLOWED_GROUP_IDS`, `/id`, `/setgroup`):**
+  - Bổ sung cơ chế phân quyền nhóm chat (`ALLOWED_GROUP_IDS`) song song với phân quyền cá nhân (`ALLOWED_USER_IDS`).
+  - Khi thêm Bot vào nhóm Telegram (đã cấp quyền Admin cho Bot), người quản trị chỉ cần gõ `/id` hoặc `/setgroup` ngay trong nhóm: Bot tự động trả về thông tin nhóm (`Group ID` âm `-100...`, tên nhóm) kèm nút bấm Inline **1 chạm** (`✅ Cấp quyền luôn cho Nhóm này`) để ghi đè trực tiếp vào `PropertiesService` mà không cần mở trình duyệt sửa code.
+  - Tự động tương thích bàn phím cố định 3 nút trong môi trường Group Chat (`chatId < 0`) nhằm loại bỏ lỗi `400 BUTTON_TYPE_INVALID` của Telegram API.
 - **Đóng gói Bộ cài đặt Thủ công (`manual-copy-paste/`):**
   - Bổ sung thư mục `manual-copy-paste/` (gộp sẵn thành 3 file `1_F1ActivateBot.gs`, `2_Code.gs`, `3_uiWebApp.html` kèm `appsscript.json`) và hướng dẫn từng bước trong `README.md` dành cho người không chuyên code.
 

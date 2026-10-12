@@ -25,11 +25,11 @@ Hệ thống Bot Telegram quản lý tài chính đa quỹ hoạt động hoàn 
      - **Tab 1 (Ghi Thu Chi):** Chọn Quỹ (`/c`, `/lcb`, `/clcb`), chọn chiều Thu/Chi, chọn nhanh thẻ Ngân hàng và `#Tag` (hiển thị kèm số dư trực tiếp), bàn phím máy tính đầy đủ phép toán (`+`, `-`, `*`, `/`, ngoặc đơn `( )`, phím tắt `.000`, `.000.000`, nút `=`), ô nhập ghi chú và nút đính kèm ảnh hóa đơn (Bill) tải thẳng lên Google Drive.
      - **Tab 2 (Số Dư & Hạn Mức):** Bảng đối chiếu số dư từng Ngân hàng giữa 2 Quỹ, thanh tiến độ phần trăm hạn mức chi tiêu theo `#Tag`, và biểu mẫu cài đặt hạn mức mới.
      - **Tab 3 (Lịch Sử & Sổ):** Danh sách 5 giao dịch gần nhất kèm đường dẫn xem ảnh Bill, nút Hoàn tác giao dịch vừa nhập (`/undo`), nút Chốt sổ tháng mới (`/chotso`) và Reset số dư về 0 (`/reset`).
-   - **Tầng 2 - Bàn phím Cố định & Chọn nút 4 bước trong Chat (In-Chat Wizard):**
-     - Cung cấp 7 nút chức năng cố định dưới đáy màn hình: `Open UI Mode`, `Ghi Thu / Chi`, `Xem Số Dư`, `5 GD Gần Nhất`, `Hoàn Tác (Undo)`, `Đặt Hạn Mức`, `Chốt Sổ / Reset`.
-     - Khi bấm `Ghi Thu / Chi` (hoặc gõ `/ghi`), Bot hiển thị bảng nút bấm dẫn dắt từng bước ngay trong khung chat: Bước 1 (Chọn Quỹ) -> Bước 2 (Chọn Ngân hàng) -> Bước 3 (Chọn `#Tag`) -> Bước 4 (Nhập số tiền/phép tính và ghi chú).
+   - **Tầng 2 - Bàn phím Cố định 3 Nút (Tối ưu màn hình hẹp Z Fold) & Chọn nút 4 bước trong Chat (In-Chat Wizard):**
+     - Cung cấp 3 nút chức năng cố định tinh gọn dưới đáy màn hình: `📱 Mở App Thu Chi (UI Mode)`, `📊 Số Dư`, `📜 Lịch sử` (5 giao dịch gần nhất).
+     - Khi gõ `/ghi`, Bot hiển thị bảng nút bấm dẫn dắt từng bước ngay trong khung chat: Bước 1 (Chọn Quỹ) -> Bước 2 (Chọn Ngân hàng) -> Bước 3 (Chọn `#Tag`) -> Bước 4 (Nhập số tiền/phép tính và ghi chú).
    - **Tầng 3 - Dòng lệnh truyền thống (CLI Commands):**
-     - Giữ nguyên 100% tốc độ gõ lệnh nhanh cho người quen dùng bàn phím (`/c`, `/lcb`, `/clcb`, `/sodu`, `/ls`, `/limit`, `/undo`, `/chotso`, `/reset`, `/status`, `/id`).
+     - Giữ nguyên 100% tốc độ gõ lệnh nhanh cho người quen dùng bàn phím (`/c`, `/lcb`, `/clcb`, `/sodu`, `/ls`, `/limit`, `/undo`, `/chotso`, `/reset`, `/status`, `/id`, `/setgroup`).
 2. **Bộ phân tích Biểu thức Toán học Đầy đủ (`+`, `-`, `*`, `/`, Ngoặc đơn `( )`):**
    - Hỗ trợ tính toán trực tiếp các biểu thức phức tạp kèm đơn vị tiền tệ viết tắt (`k`, `tr`, `m`, `1tr5`) trên cả giao diện đồ họa, luồng Wizard và câu lệnh chat.
    - Ví dụ: `/c MB #ANUONG -(120k+30k)/3 Ăn trưa chia 3 người` -> Hệ thống tự động tính ra `-50.000 đ` và lưu cả biểu thức gốc `-(120k+30k)/3` lẫn kết quả `-50000` vào Google Sheets.
@@ -38,8 +38,9 @@ Hệ thống Bot Telegram quản lý tài chính đa quỹ hoạt động hoàn 
    - Hỗ trợ tải ảnh hóa đơn lên thư mục `SuperFinanceBot_Bills` trên Google Drive bằng 4 cách: Chọn ảnh trực tiếp trong màn hình `Open UI Mode`, gửi ảnh kèm lệnh ở Caption, gửi ảnh rời trước rồi nhập lệnh, hoặc bấm Reply lệnh vào ảnh.
 4. **Lưu sổ Liên thông qua các kỳ (`/reset` và `/chotso`):**
    - Toàn bộ từng dòng giao dịch cũ (Mã GD, Thời gian, Ngân hàng, `#Tag`, Biểu thức, Số tiền, Ghi chú, Link Ảnh Bill) được di chuyển nguyên vẹn sang nối tiếp tại bảng `Lịch Sử Chốt Sổ`, liên thông xuyên suốt tất cả các tháng mà không bao giờ làm mất lịch sử giao dịch.
-5. **Phân quyền Đa Tài khoản (`ALLOWED_USER_IDS`) & Chống Lặp Lệnh 3 Tầng:**
-   - Cho phép nhiều tài khoản Telegram cùng sử dụng Bot. Tài khoản lạ sẽ tự động bị chặn với thông báo `Bot 2.2.0 Loading...`.
+5. **Phân quyền Đa Tài khoản (`ALLOWED_USER_IDS`), Tự động Cấp quyền Nhóm 1 Chạm (`ALLOWED_GROUP_IDS`) & Chống Lặp Lệnh 3 Tầng:**
+   - Cho phép nhiều tài khoản cá nhân hoặc **cả Nhóm Chat (Group / Supergroup)** cùng sử dụng Bot.
+   - **Tự lấy Group Info & Cấp quyền Nhóm 1 chạm ngay trên Telegram:** Chỉ cần thêm Bot vào nhóm, cấp quyền Admin cho Bot rồi gõ `/id` (hoặc `/setgroup`), Bot sẽ hiện thông tin nhóm kèm nút bấm **`✅ Cấp quyền luôn cho Nhóm này (Ghi đè thiết lập)`** để lưu thẳng vào `ScriptProperties` mà không cần mở trình duyệt sửa code.
    - Phản hồi Webhook bằng `HtmlService.createHtmlOutput("OK")` kết hợp `securityGuard.js` giúp triệt tiêu hoàn toàn lỗi `302 Found Redirect` của Google Apps Script.
 
 ---
@@ -211,6 +212,22 @@ Nếu bạn muốn copy trực tiếp từ thư mục **`src/`** mà không dùn
    - Hãy mở ứng dụng Telegram, vào Bot của bạn và gõ lệnh **`/start`**. Bàn phím cố định chứa nút **`Open UI Mode`** sẽ lập tức hiện ra dưới đáy màn hình và hệ thống tự động tạo sẵn file Google Sheets gồm 5 bảng trong Google Drive của bạn.
 
 
+### Bước 6 (Tùy chọn): Thêm Bot vào Nhóm Chat Gia Đình / Đội Nhóm & Cấp Quyền 1 Chạm
+
+Nếu bạn muốn đưa Bot vào một Nhóm Telegram (Group / Supergroup) để các thành viên trong nhóm cùng ghi thu chi mà không cần nhắn trực tiếp từng người:
+
+1. **Thêm Bot vào Nhóm & Cấp quyền Admin:**
+   - Thêm Bot vào nhóm Telegram của bạn.
+   - Vào **Cài đặt Nhóm (Group Info)** -> **Quản trị viên (Administrators)** -> **Thêm Quản trị viên (Add Admin)** -> Chọn Bot và bấm Lưu.
+   - *Lý do:* Khi có quyền Admin, Bot sẽ tự động nhận được mọi câu lệnh (`/c`, `/sodu`...), các nút bấm từ bàn phím đáy và ảnh hóa đơn (Bill) gửi vào nhóm mà **không cần** phải gõ `@TenBot`.
+2. **Tự lấy thông tin nhóm & Cấp quyền 1 chạm ngay trên Telegram (Không cần sửa code):**
+   - Dùng tài khoản Admin của bạn, gõ lệnh **`/id`** (hoặc **`/setgroup`**) ngay trong nhóm chat.
+   - Bot sẽ trả về thông tin chi tiết của nhóm (`Group ID` có dấu trừ ở đầu, ví dụ `-1001234567890`) kèm theo nút bấm:
+     **`✅ Cấp quyền luôn cho Nhóm này (Ghi đè thiết lập)`**
+   - Bấm vào nút đó -> Bot lập tức ghi đè `Group ID` vào cấu hình `ALLOWED_GROUP_IDS` và kích hoạt bàn phím 3 nút dưới đáy màn hình cho toàn bộ thành viên trong nhóm!
+   - *(Mẹo: Nếu muốn giữ cố định ID nhóm cho những lần chạy lại `ActivateBot()` về sau, bạn có thể copy mã `-100...` mà lệnh `/id` hiển thị và dán vào mục `'ALLOWED_GROUP_IDS'` trong file `F1ActivateBot.gs`).*
+
+
 <!-- ================================================================= -->
 <!-- CHÈN ẢNH MINH HỌA 3: ĐIỀN WEBAPP_URL & CHẠY ACTIVATEBOT TRÊN GAS  -->
 <!-- Tên file ảnh gợi ý: ./images/03-kich-hoat-activatebot-gas.png     -->
@@ -233,7 +250,7 @@ npx clasp login
 ```
 
 1. Sao chép `.clasp.json.example` thành `.clasp.json` và điền `scriptId` của dự án Google Apps Script.
-2. Sao chép `.env.example` thành `.env` và điền `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_IDS`.
+2. Sao chép `.env.example` thành `.env` và điền `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_IDS`, `ALLOWED_GROUP_IDS`.
 3. Mở file `src/F1ActivateBot.js` và `src/core/config.js`, điền `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_IDS` và `WEBAPP_URL`.
 4. Đẩy mã nguồn và phát hành phiên bản:
    ```bash
@@ -261,7 +278,9 @@ npx clasp login
 | **`/undo`** | `/undo` | `/undo` | Xóa giao dịch vừa nhập gần nhất (hoặc bấm nút Hoàn tác dưới tin nhắn). |
 | **`/chotso`** | `/chotso` hoặc `/renew` | `/chotso` | Chuyển toàn bộ giao dịch cũ sang `Lịch Sử Chốt Sổ`, giữ lại dòng `Số dư đầu kỳ`. |
 | **`/reset`** | `/reset` | `/reset` | Chuyển toàn bộ giao dịch cũ sang `Lịch Sử Chốt Sổ`, đưa mọi số dư hiện tại về `0 đ`. |
-| **`/status`** | `/status` | `/status` | Xem phiên bản, danh sách ID được phép, trạng thái Sheet & Google Drive. |
+| **`/id`** | `/id` hoặc `/groupid` | `/id` | Lấy `User ID` cá nhân hoặc `Group ID` của nhóm chat (kèm nút bấm cấp quyền nhóm 1 chạm). |
+| **`/setgroup`** | `/setgroup` | `/setgroup` | Ghi đè nhanh `Group ID` của nhóm chat hiện tại vào thiết lập được phép dùng Bot. |
+| **`/status`** | `/status` | `/status` | Xem phiên bản, danh sách ID User & Nhóm được phép, trạng thái Sheet & Google Drive. |
 
 ---
 

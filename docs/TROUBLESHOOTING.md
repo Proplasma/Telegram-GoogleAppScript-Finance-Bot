@@ -39,3 +39,21 @@ Mặc định `HtmlService` trên Google Apps Script chặn hiển thị trang b
 
 ### Giải pháp đã áp dụng
 Trong hàm `doGet(e)` tại `src/main.js`, thiết lập `.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)` kết hợp thẻ meta `viewport` chuẩn di động, giúp cửa sổ **Open UI Mode** mở mượt mà trên cả Telegram Desktop, iOS và Android.
+
+---
+
+## 4. Sự cố: Đưa Bot vào Nhóm Chat (Group) nhưng Bot không đọc được tin nhắn hoặc báo lỗi `400 BUTTON_TYPE_INVALID`
+
+### Nguyên nhân
+1. Mặc định Telegram bật chế độ **Group Privacy** cho mọi Bot mới tạo, khiến Bot trong nhóm không nhận được tin nhắn thường hoặc ảnh hóa đơn nếu người dùng không gõ `@TenBot`.
+2. Việc tìm `Group ID` (dãy số âm `-100...`) của nhóm rồi mở lại trình duyệt sửa code khá phức tạp với người dùng.
+3. Telegram Bot API cấm gửi nút có thuộc tính `web_app: { url }` bên trong `ReplyKeyboardMarkup` hoặc `InlineKeyboardMarkup` khi gửi vào Group Chat (`chatId < 0`), trả về lỗi `400 Bad Request: BUTTON_TYPE_INVALID`.
+
+### Giải pháp chuẩn hóa đã áp dụng (Dùng cho cả các dự án Bot về sau)
+1. **Cấp quyền Admin cho Bot trong Nhóm:** Khi thêm Bot vào nhóm và cấp quyền Quản trị viên (Admin), Bot tự động đọc được mọi câu lệnh, nút bấm bàn phím đáy và ảnh hóa đơn mà không cần tag `@TenBot`.
+2. **Tự lấy Group Info & Cấp quyền Nhóm 1 chạm (`/id` & `/setgroup`):**
+   - Admin chỉ cần gõ `/id` hoặc `/setgroup` ngay trong nhóm chat.
+   - Bot sẽ hiển thị thông tin nhóm kèm nút bấm Inline **`✅ Cấp quyền luôn cho Nhóm này (Ghi đè thiết lập)`** (`group_auth:set:<groupId>`), lưu thẳng `Group ID` vào `PropertiesService` trên Google Apps Script mà không cần mở trình duyệt sửa code.
+3. **Tự động chuyển đổi nút Web App khi ở trong Nhóm (`chatId < 0`):**
+   - Hàm `buildMainReplyKeyboard(userId, chatId)` tự động kiểm tra `Number(chatId) < 0`. Nếu ở trong nhóm, nút `📱 Mở App Thu Chi (UI Mode)` chuyển sang nút Text thường, và khi thành viên bấm vào sẽ nhận được nút Inline chuẩn dạng `url` để mở giao diện Web App an toàn mà không bao giờ gặp lỗi `400 BUTTON_TYPE_INVALID`.
+
