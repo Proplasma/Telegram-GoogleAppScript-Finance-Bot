@@ -160,10 +160,22 @@ function dispatchCommand(message) {
       return handleTransactionCommand("clcb", argsText, message, chatId, userLabel);
 
     case "/undo":
-      var undoText = executeUndoTransaction(argsText, null);
-      return safeSendMessage(chatId, undoText, {
-        reply_markup: buildMainReplyKeyboard(userId, chatId),
-        disable_web_page_preview: true
+      var undoSub = (argsText || "").trim().toLowerCase();
+      if (undoSub === "yes" || undoSub === "confirm") {
+        var undoText = executeUndoTransaction("", null);
+        return safeSendMessage(chatId, undoText, {
+          reply_markup: buildMainReplyKeyboard(userId, chatId),
+          disable_web_page_preview: true
+        });
+      }
+      var undoConfirmObj = buildUndoConfirmationPreview(undoSub, null);
+      if (!undoConfirmObj.found) {
+        return safeSendMessage(chatId, undoConfirmObj.text, {
+          reply_markup: buildMainReplyKeyboard(userId, chatId)
+        });
+      }
+      return safeSendMessage(chatId, undoConfirmObj.text, {
+        reply_markup: undoConfirmObj.replyMarkup
       });
 
     case "/sodu":
@@ -432,7 +444,8 @@ function handleCallbackQuery(callbackQuery) {
     }
   }
 
-  // 1. Nút Hoàn tác giao dịch: "undo_tx:<mode>:<txId>"
+  // 1. Nút Hoàn tác giao dịch ban đầu (dưới biên lai): "undo_tx:<mode>:<txId>"
+  // Hiển thị hộp thoại xác nhận trước khi xóa, chống bấm nhầm
   if (data.indexOf("undo_tx:") === 0) {
     var parts = data.split(":");
     var mode = parts[1] || "c";
@@ -440,11 +453,62 @@ function handleCallbackQuery(callbackQuery) {
 
     callTelegramApi("answerCallbackQuery", {
       callback_query_id: callbackQuery.id,
-      text: "↩️ Đang hoàn tác giao dịch " + txId + "..."
+      text: "❓ Vui lòng xác nhận hoàn tác giao dịch " + txId
     });
 
-    var undoMsg = executeUndoTransaction(mode, txId);
-    return safeSendMessage(chatId, undoMsg);
+    var undoConfirm = buildUndoConfirmationPreview(mode, txId);
+    if (!undoConfirm.found) {
+      return safeSendMessage(chatId, undoConfirm.text);
+    }
+
+    return safeSendMessage(chatId, undoConfirm.text, {
+      reply_markup: undoConfirm.replyMarkup
+    });
+  }
+
+  // 1b. Nút Xác nhận Hoàn tác: "confirm_undo:<mode>:<txId>"
+  if (data.indexOf("confirm_undo:") === 0) {
+    var cParts = data.split(":");
+    var cMode = cParts[1] || "c";
+    var cTxId = cParts[2] || "";
+
+    callTelegramApi("answerCallbackQuery", {
+      callback_query_id: callbackQuery.id,
+      text: "↩️ Đang hoàn tác giao dịch " + cTxId + "..."
+    });
+
+    var undoMsg = executeUndoTransaction(cMode, cTxId);
+
+    // Cập nhật lại tin nhắn xác nhận thành kết quả hoàn tác
+    if (callbackQuery.message && callbackQuery.message.message_id) {
+      return editMessageText(chatId, callbackQuery.message.message_id, undoMsg, {
+        disable_web_page_preview: true
+      });
+    }
+    return safeSendMessage(chatId, undoMsg, {
+      disable_web_page_preview: true
+    });
+  }
+
+  // 1c. Nút Hủy bỏ Hoàn tác: "cancel_undo:<mode>:<txId>"
+  if (data.indexOf("cancel_undo:") === 0) {
+    var cancelParts = data.split(":");
+    var cancelTxId = cancelParts[2] || "";
+
+    callTelegramApi("answerCallbackQuery", {
+      callback_query_id: callbackQuery.id,
+      text: "❌ Đã hủy thao tác hoàn tác."
+    });
+
+    var cancelText = [
+      "❌ <b>ĐÃ HỦY THAO TÁC HOÀN TÁC</b>",
+      "Giao dịch <code>" + escapeHtml(cancelTxId) + "</code> vẫn được giữ nguyên vẹn trên Google Sheets."
+    ].join("\n\n");
+
+    if (callbackQuery.message && callbackQuery.message.message_id) {
+      return editMessageText(chatId, callbackQuery.message.message_id, cancelText);
+    }
+    return safeSendMessage(chatId, cancelText);
   }
 
   // 2. Nút Xác nhận Chốt sổ: "confirm_renew:yes" hoặc "confirm_renew:no"

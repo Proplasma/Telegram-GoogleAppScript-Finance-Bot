@@ -608,9 +608,14 @@ function handleUiReplyKeyboardOrWizard(message, rawText, chatId, userId, userLab
 
   if (clean === "↩️ Hoàn Tác (Undo)" || clean === "Hoàn Tác (Undo)") {
     setWizardState(chatId, null);
-    var undoText = executeUndoTransaction("", null);
-    return safeSendMessage(chatId, undoText, {
-      reply_markup: buildMainReplyKeyboard(userId, chatId)
+    var undoConfirm = buildUndoConfirmationPreview("", null);
+    if (!undoConfirm.found) {
+      return safeSendMessage(chatId, undoConfirm.text, {
+        reply_markup: buildMainReplyKeyboard(userId, chatId)
+      });
+    }
+    return safeSendMessage(chatId, undoConfirm.text, {
+      reply_markup: undoConfirm.replyMarkup
     });
   }
 

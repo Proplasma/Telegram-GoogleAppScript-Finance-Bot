@@ -288,6 +288,179 @@ function executeFinanceTransaction(mode, parsedTx, userLabel, billInfo) {
 }
 
 /**
+ * Tìm thông tin giao dịch cần hoàn tác (theo txId cụ thể hoặc giao dịch gần nhất)
+ * @param {string} [targetMode] - "c" | "lcb" | "clcb"
+ * @param {string} [specificTxId] - Mã GD cụ thể
+ * @returns {object|null}
+ */
+function findTransactionToUndo(targetMode, specificTxId) {
+  var mode = String(targetMode || "").trim().toLowerCase();
+  var pRows = getAllTransactionRows(SHEET_NAMES.PERSONAL);
+  var sRows = getAllTransactionRows(SHEET_NAMES.SUB_FUND);
+
+  if (specificTxId) {
+    var cleanTxId = String(specificTxId).trim();
+    var foundP = null;
+    var foundS = null;
+
+    for (var i = pRows.length - 1; i >= 0; i--) {
+      if (pRows[i].txId === cleanTxId) {
+        foundP = pRows[i];
+        break;
+      }
+    }
+    for (var j = sRows.length - 1; j >= 0; j--) {
+      if (sRows[j].txId === cleanTxId) {
+        foundS = sRows[j];
+        break;
+      }
+    }
+
+    if (!foundP && !foundS) {
+      return null;
+    }
+
+    var effectiveMode = mode;
+    if (foundP && foundS) {
+      effectiveMode = "clcb";
+    } else if (foundP) {
+      effectiveMode = "c";
+    } else if (foundS) {
+      effectiveMode = "lcb";
+    }
+
+    var sample = foundP || foundS;
+    var scopeName =
+      effectiveMode === "clcb"
+        ? "Cả 2 Quỹ (/clcb)"
+        : effectiveMode === "c"
+        ? "Quỹ Cá Nhân (/c)"
+        : "Quỹ Phụ (/lcb)";
+
+    return {
+      found: true,
+      mode: effectiveMode,
+      scopeName: scopeName,
+      sample: sample
+    };
+  }
+
+  // Nếu không có specificTxId -> tìm giao dịch gần nhất
+  if (mode === "lcb") {
+    if (sRows.length === 0) return null;
+    return {
+      found: true,
+      mode: "lcb",
+      scopeName: "Quỹ Phụ (/lcb)",
+      sample: sRows[sRows.length - 1]
+    };
+  } else if (mode === "clcb") {
+    var lastP = pRows.length > 0 ? pRows[pRows.length - 1] : null;
+    var lastS = sRows.length > 0 ? sRows[sRows.length - 1] : null;
+    var sample = lastP || lastS;
+    if (!sample) return null;
+    return {
+      found: true,
+      mode: "clcb",
+      scopeName: "Cả 2 Quỹ (/clcb)",
+      sample: sample
+    };
+  } else if (mode === "c") {
+    if (pRows.length === 0) return null;
+    return {
+      found: true,
+      mode: "c",
+      scopeName: "Quỹ Cá Nhân (/c)",
+      sample: pRows[pRows.length - 1]
+    };
+  } else {
+    // Tự động phát hiện giao dịch gần nhất
+    var lastP = pRows.length > 0 ? pRows[pRows.length - 1] : null;
+    var lastS = sRows.length > 0 ? sRows[sRows.length - 1] : null;
+
+    if (lastP && lastS && lastP.txId && lastP.txId === lastS.txId) {
+      return {
+        found: true,
+        mode: "clcb",
+        scopeName: "Cả 2 Quỹ (/clcb)",
+        sample: lastP
+      };
+    } else if (lastP) {
+      return {
+        found: true,
+        mode: "c",
+        scopeName: "Quỹ Cá Nhân (/c)",
+        sample: lastP
+      };
+    } else if (lastS) {
+      return {
+        found: true,
+        mode: "lcb",
+        scopeName: "Quỹ Phụ (/lcb)",
+        sample: lastS
+      };
+    }
+    return null;
+  }
+}
+
+/**
+ * Tạo hộp thoại xác nhận hoàn tác giao dịch kèm thông tin chi tiết và 2 nút Inline
+ * @param {string} [targetMode]
+ * @param {string} [specificTxId]
+ * @returns {{ found: boolean, text: string, replyMarkup?: object }}
+ */
+function buildUndoConfirmationPreview(targetMode, specificTxId) {
+  var txInfo = findTransactionToUndo(targetMode, specificTxId);
+  if (!txInfo || !txInfo.sample) {
+    return {
+      found: false,
+      text: "⚠️ <b>KHÔNG TÌM THẤY GIAO DỊCH ĐỂ HOÀN TÁC</b>\n\nGiao dịch này đã được xóa trước đó hoặc sổ đang trống."
+    };
+  }
+
+  var s = txInfo.sample;
+  var isExpense = s.amount < 0;
+  var amountStr = formatCurrency(Math.abs(s.amount), false);
+  var typeStr = isExpense ? "🔴 CHI RA: -" + amountStr : "🟢 THU VÀO: +" + amountStr;
+
+  var blocks = [
+    "❓ <b>XÁC NHẬN HOÀN TÁC GIAO DỊCH</b>",
+    "Bạn có chắc chắn muốn hoàn tác (xóa) giao dịch này không?",
+    "<blockquote>" +
+      "🆔 <b>Mã GD:</b> <code>" + escapeHtml(s.txId || "N/A") + "</code>\n\n" +
+      "📂 <b>Quỹ:</b> " + escapeHtml(txInfo.scopeName) + "\n\n" +
+      "💵 <b>Số tiền:</b> <b>" + typeStr + "</b>\n\n" +
+      "🏦 <b>Ngân hàng:</b> " + escapeHtml(s.bank || "Chung") + "  •  <code>" + escapeHtml(s.tag || "#CHUNG") + "</code>" +
+      (s.note ? "\n\n📝 <b>Ghi chú:</b> " + escapeHtml(s.note) : "") +
+      (s.time ? "\n\n⏰ <b>Thời gian:</b> " + escapeHtml(s.time) : "") +
+      "</blockquote>",
+    "⚠️ <i>Lưu ý: Dòng giao dịch sẽ bị xóa khỏi Google Sheets và số dư sẽ được khôi phục lại!</i>"
+  ];
+
+  var replyMarkup = {
+    inline_keyboard: [
+      [
+        {
+          text: "🗑️ Xác nhận Hoàn tác",
+          callback_data: "confirm_undo:" + txInfo.mode + ":" + s.txId
+        },
+        {
+          text: "❌ Hủy bỏ (Giữ lại)",
+          callback_data: "cancel_undo:" + txInfo.mode + ":" + s.txId
+        }
+      ]
+    ]
+  };
+
+  return {
+    found: true,
+    text: blocks.join("\n\n"),
+    replyMarkup: replyMarkup
+  };
+}
+
+/**
  * Hoàn tác (Undo) giao dịch gần nhất hoặc theo Mã GD cụ thể
  * @param {string} [targetMode] - "c" | "lcb" | "clcb"
  * @param {string} [specificTxId] - Mã GD cụ thể khi bấm nút Inline
@@ -774,6 +947,8 @@ if (typeof module !== "undefined" && module.exports) {
   global.calculateSheetStats = calculateSheetStats;
   global.buildLimitAlertText = buildLimitAlertText;
   global.executeFinanceTransaction = executeFinanceTransaction;
+  global.findTransactionToUndo = findTransactionToUndo;
+  global.buildUndoConfirmationPreview = buildUndoConfirmationPreview;
   global.executeUndoTransaction = executeUndoTransaction;
   global.buildBalanceReport = buildBalanceReport;
   global.buildRecentHistoryReport = buildRecentHistoryReport;
@@ -787,6 +962,8 @@ if (typeof module !== "undefined" && module.exports) {
     calculateSheetStats: calculateSheetStats,
     buildLimitAlertText: buildLimitAlertText,
     executeFinanceTransaction: executeFinanceTransaction,
+    findTransactionToUndo: findTransactionToUndo,
+    buildUndoConfirmationPreview: buildUndoConfirmationPreview,
     executeUndoTransaction: executeUndoTransaction,
     buildBalanceReport: buildBalanceReport,
     buildRecentHistoryReport: buildRecentHistoryReport,
