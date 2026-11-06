@@ -16,6 +16,10 @@
   - Bổ sung cơ chế phân quyền nhóm chat (`ALLOWED_GROUP_IDS`) song song với phân quyền cá nhân (`ALLOWED_USER_IDS`).
   - Khi thêm Bot vào nhóm Telegram (đã cấp quyền Admin cho Bot), người quản trị chỉ cần gõ `/id` hoặc `/setgroup` ngay trong nhóm: Bot tự động trả về thông tin nhóm (`Group ID` âm `-100...`, tên nhóm) kèm nút bấm Inline **1 chạm** (`✅ Cấp quyền luôn cho Nhóm này`) để ghi đè trực tiếp vào `PropertiesService` mà không cần mở trình duyệt sửa code.
   - Tự động tương thích bàn phím cố định 3 nút trong môi trường Group Chat (`chatId < 0`) nhằm loại bỏ lỗi `400 BUTTON_TYPE_INVALID` của Telegram API.
+- **Hộp thoại Xác nhận Hoàn tác Giao dịch 2 Bước (Chống bấm nhầm):**
+  - Nâng cấp nút Inline `[ ↩️ Hoàn tác giao dịch ]` dưới mỗi biên lai giao dịch: Không xóa ngay mà hiển thị hộp thoại xác nhận chi tiết (Mã GD, Quỹ, Số tiền, Ngân hàng, #Tag, Ghi chú) kèm 2 nút `[ 🗑️ Xác nhận Hoàn tác ]` và `[ ❌ Hủy bỏ (Giữ lại) ]`.
+  - Hỗ trợ hủy thao tác an toàn (bảo toàn 100% giao dịch) và cập nhật tin nhắn xác nhận thành kết quả hoàn tác sau khi thực thi.
+  - Đồng bộ cơ chế xác nhận cho lệnh gõ `/undo` và nút `↩️ Hoàn Tác (Undo)` trên bàn phím.
 - **Đóng gói Bộ cài đặt Thủ công (`manual-copy-paste/`):**
   - Bổ sung thư mục `manual-copy-paste/` (gộp sẵn thành 3 file `1_F1ActivateBot.gs`, `2_Code.gs`, `3_uiWebApp.html` kèm `appsscript.json`) và hướng dẫn từng bước trong `README.md` dành cho người không chuyên code.
 
